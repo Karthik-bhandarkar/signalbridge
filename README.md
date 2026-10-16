@@ -1,15 +1,15 @@
 # 🛰️ SignalBridge — High-Throughput Webhook Ingestion Engine
 
-[![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-brightgreen?style=flat-square&logo=githubactions)](https://github.com)
+[![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-Passing-brightgreen?style=flat-square&logo=githubactions)](https://github.com/Karthik-bhandarkar/signalbridge/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.13-blue?style=flat-square&logo=python)](https://python.org)
 [![Django 5 + DRF](https://img.shields.io/badge/django-5.1%20%7C%20DRF%203.17-092E20?style=flat-square&logo=django)](https://djangoproject.com)
 [![PostgreSQL 16](https://img.shields.io/badge/database-PostgreSQL%2016-336791?style=flat-square&logo=postgresql)](https://postgresql.org)
 [![Redis 7](https://img.shields.io/badge/cache%20%26%20broker-Redis%207-DC382D?style=flat-square&logo=redis)](https://redis.io)
 [![Celery 5.4+](https://img.shields.io/badge/tasks-Celery%205.4+-37814A?style=flat-square&logo=celery)](https://docs.celeryq.dev)
 [![Docker Compose](https://img.shields.io/badge/orchestration-Docker%20Compose-2496ED?style=flat-square&logo=docker)](https://docker.com)
-[![Test Coverage 93%](https://img.shields.io/badge/coverage-93%25-success?style=flat-square&logo=pytest)](https://pytest.org)
+[![Test Coverage 91%](https://img.shields.io/badge/coverage-91%25-success?style=flat-square&logo=pytest)](https://pytest.org)
 [![Postman Certified](https://img.shields.io/badge/postman-28%2F28%20Passed-FF6C37?style=flat-square&logo=postman)](https://postman.com)
-[![Architecture](https://img.shields.io/badge/architecture-Decoupled%20Producer--Consumer-orange?style=flat-square)](https://github.com)
+[![Architecture](https://img.shields.io/badge/architecture-Decoupled%20Producer--Consumer-orange?style=flat-square)](https://github.com/Karthik-bhandarkar/signalbridge)
 
 > **SignalBridge** is a distributed, event-driven webhook ingestion pipeline engineered to ingest, cryptographically authenticate, deduplicate, and correlate high-velocity alert storms (PagerDuty, Datadog, Prometheus) under strict latency and consistency SLAs.
 
@@ -118,7 +118,7 @@ When multiple workers process alerts with identical deduplication hashes simulta
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/signalbridge.git
+git clone https://github.com/Karthik-bhandarkar/signalbridge.git
 cd signalbridge
 ```
 
