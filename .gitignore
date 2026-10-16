@@ -1,0 +1,84 @@
+# =============================================================================
+# SignalBridge — Git Ignore Configuration
+# =============================================================================
+
+# Internal Engineering Blueprints, Learning Journals & Specifications
+/docs/
+/snapshot/
+/scratch/
+AGENTS.md
+prompt.md
+verify_all.py
+
+# Environment Variables & Secrets (NEVER COMMIT CREDENTIALS)
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+
+# Postman Local Environments with Active Secrets
+postman/*_Local.postman_environment.json
+postman/*.local.postman_environment.json
+postman/*Zero_Setup*.json
+postman/*_zero_setup*.json
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+ENV/
+env/
+
+# Pytest, Coverage & Profiling Artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+
+# Static & Media Files
+staticfiles/
+media/
+
+# Database Local Files
+*.sqlite3
+*.db
+*.dump
+
+# Celery Beat
+celerybeat-schedule
+celerybeat.pid
+
+# OS & IDE Metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

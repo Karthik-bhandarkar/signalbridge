@@ -1,0 +1,131 @@
+# =============================================================================
+# SignalBridge Multi-Container Orchestration Specification (Docker Compose)
+# Services: PostgreSQL 16, Redis 7, Django 5 (DRF), Celery Worker, MinIO (S3)
+# =============================================================================
+services:
+
+  # ---------------------------------------------------------------------------
+  # 1. Primary Relational Database: PostgreSQL 16
+  # Stores alerts, incidents, grouping keys, and audit logs with ACID safety.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: signalbridge_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-signalbridge_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signalbridge_network
+
+  # ---------------------------------------------------------------------------
+  # 2. In-Memory Cache & Message Broker: Redis 7
+  # Handles sub-millisecond idempotency deduplication keys and Celery broker queues.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: signalbridge_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signalbridge_network
+
+  # ---------------------------------------------------------------------------
+  # 3. Object Storage: S3Mock (Simulates AWS S3 locally)
+  # Raw unparsed JSON payloads are archived here, keeping PostgreSQL lean.
+  # ---------------------------------------------------------------------------
+  s3:
+    image: adobe/s3mock:latest
+    container_name: signalbridge_s3
+    restart: unless-stopped
+    ports:
+      - "9090:9090"   # S3 API endpoint (HTTP)
+    environment:
+      initialBuckets: signalbridge-raw-archives
+    networks:
+      - signalbridge_network
+
+  # ---------------------------------------------------------------------------
+  # 4. Ingestion Gateway & Web API: Django 5 + DRF
+  # Receives external webhooks, runs HMAC auth, and returns sub-100ms ACK (202).
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: signalbridge_web
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - signalbridge_network
+
+  # ---------------------------------------------------------------------------
+  # 5. Distributed Task Worker: Celery 5.4+
+  # Asynchronously groups alerts, calculates hashes, and executes row-level locks.
+  # ---------------------------------------------------------------------------
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: signalbridge_celery_worker
+    restart: unless-stopped
+    command: celery -A config.celery worker -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - signalbridge_network
+
+# -----------------------------------------------------------------------------
+# Persistent Docker Volumes
+# Data persists on the host machine even when containers are stopped/removed.
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: signalbridge_postgres_data
+  redis_data:
+    name: signalbridge_redis_data
+
+# -----------------------------------------------------------------------------
+# Isolated Bridge Network
+# Allows inter-container communication using service names (e.g., "postgres:5432")
+# -----------------------------------------------------------------------------
+networks:
+  signalbridge_network:
+    name: signalbridge_network
+    driver: bridge
