@@ -51,4 +51,4 @@ evidence/
 
 ---
 
-For the full image-by-image breakdown, refer to [`evidence/screenshots/README.md`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/evidence/screenshots/README.md).
+For the full image-by-image breakdown, refer to [`evidence/screenshots/README.md`](screenshots/README.md).
