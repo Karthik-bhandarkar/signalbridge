@@ -147,6 +147,59 @@ All performance numbers below were **measured on a local Docker setup**:
 | **Automated Postman Suite** | **14 / 14 requests passed (28 / 28 assertions, 1074 ms)** | Automated Newman CLI run against all collection folders | [`postman/README.md`](postman/README.md) |
 | **Concurrency Incident Safety** | **20 threads $\rightarrow$ 1 Incident, 0 duplicates** | Automated Python thread-pool test with real database locks | [`tests/concurrency/test_incident_locking.py`](tests/concurrency/test_incident_locking.py) |
 
+### Visual Snapshots as Proof
+
+To verify each claim, visual snapshots were captured from the local Docker runtime, Postman runs, pgAdmin 4 database queries, and Celery worker logs. Click any snapshot below to view the visual proof:
+
+<details>
+<summary>📸 <b>Snapshot 1: Webhook Acknowledgment in 30 ms (HTTP 202 Accepted)</b></summary>
+
+* **Proof:** Postman executes `POST /api/v1/webhooks/pagerduty/` and receives an HTTP 202 Accepted response with a tracking ID (`trc-pd-1792149726016`) in 30 ms. Both response tests pass.
+![Webhook Acknowledged in 30ms](evidence/screenshots/03-webhook-accepted.png)
+</details>
+
+<details>
+<summary>📸 <b>Snapshot 2: Duplicate Message Suppression in 15 ms (HTTP 200 duplicate_ignored)</b></summary>
+
+* **Proof:** Replaying the identical payload within the 60-second window receives an immediate HTTP 200 response with `"status": "duplicate_ignored"` in 15 ms without reprocessing.
+![Duplicate Message Suppressed](evidence/screenshots/05-idempotency.png)
+</details>
+
+<details>
+<summary>📸 <b>Snapshot 3: HMAC Signature Rejection in 12 ms (HTTP 401 Unauthorized)</b></summary>
+
+* **Proof:** Sending a request with an invalid signature header is rejected in 12 ms with an HTTP 401 Unauthorized status.
+![HMAC Signature Rejection](evidence/screenshots/04-hmac-rejected.png)
+</details>
+
+<details>
+<summary>📸 <b>Snapshot 4: Rate Limit Burst Enforcement in 13 ms (HTTP 429 Too Many Requests)</b></summary>
+
+* **Proof:** Firing requests that exceed the per-minute limit triggers an HTTP 429 response in 13 ms with an explicit retry delay.
+![Rate Limit Burst Enforcement](evidence/screenshots/06-rate-limit.png)
+</details>
+
+<details>
+<summary>📸 <b>Snapshot 5: Celery Background Worker Execution in 0.086s</b></summary>
+
+* **Proof:** Celery container logs show task `process_webhook` received, alert correlated, raw JSON uploaded to S3, and execution completed successfully in 0.086554s.
+![Celery Worker Execution Log](evidence/screenshots/08-celery-worker.png)
+</details>
+
+<details>
+<summary>📸 <b>Snapshot 6: PostgreSQL B-Tree Index Scan in 0.078 ms</b></summary>
+
+* **Proof:** pgAdmin 4 running `EXPLAIN (ANALYZE, BUFFERS)` shows an `Index Scan Backward` on the `created_at` B-Tree index completing in 0.078 ms execution time.
+![PostgreSQL Query Plan](evidence/screenshots/09-query-plan.png)
+</details>
+
+<details>
+<summary>📸 <b>Snapshot 7: Database Record Marked PROCESSED with S3 Cold Storage Key</b></summary>
+
+* **Proof:** pgAdmin 4 table view shows database records updated to `status = 'PROCESSED'` with the date-partitioned `s3_payload_key` populated.
+![PostgreSQL Processed Record](evidence/screenshots/07-postgres-processed.png)
+</details>
+
 ---
 
 ## 7. Project File Structure
