@@ -1,409 +1,304 @@
-# SignalBridge — Webhook Ingestion Engine
+# SignalBridge — Secure Webhook Ingestion & Incident Correlation
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.13-blue.svg)](https://python.org)
-[![Django 5](https://img.shields.io/badge/django-5.1-092E20.svg)](https://djangoproject.com)
-[![PostgreSQL 16](https://img.shields.io/badge/database-PostgreSQL%2016-336791.svg)](https://postgresql.org)
-[![Redis 7](https://img.shields.io/badge/broker%20%26%20cache-Redis%207-DC382D.svg)](https://redis.io)
-[![Celery 5.4](https://img.shields.io/badge/tasks-Celery%205.4-37814A.svg)](https://docs.celeryq.dev)
-[![Docker](https://img.shields.io/badge/containers-Docker%20Compose-2496ED.svg)](https://docker.com)
-[![Newman Tests](https://img.shields.io/badge/newman-28%2F28%20passed-brightgreen.svg)](postman/README.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
+[![Django REST Framework](https://img.shields.io/badge/API-Django%20REST%20Framework-092E20.svg)](https://www.django-rest-framework.org/)
+[![PostgreSQL 16](https://img.shields.io/badge/Database-PostgreSQL%2016-336791.svg)](https://www.postgresql.org/)
+[![Redis 7](https://img.shields.io/badge/Cache%20%26%20Broker-Redis%207-DC382D.svg)](https://redis.io/)
+[![Celery 5.4](https://img.shields.io/badge/Workers-Celery%205.4-37814A.svg)](https://docs.celeryq.dev/)
+[![Docker Compose](https://img.shields.io/badge/Local%20Environment-Docker%20Compose-2496ED.svg)](https://docs.docker.com/compose/)
+[![Newman](https://img.shields.io/badge/API%20Verification-Newman-6C3BFF.svg)](https://www.npmjs.com/package/newman)
 
-SignalBridge is a backend system that receives webhooks from external services, checks their security signatures, confirms receipt in under 30 milliseconds, and processes the alert payloads in the background using worker queues.
+**SignalBridge is a backend engineering project that receives signed webhooks, validates and deduplicates deliveries, and processes alerts asynchronously to correlate related events into incidents.** It is built with Django REST Framework, PostgreSQL, Redis, Celery, and S3-compatible local object storage.
 
----
+> **Project status:** Local development and verification project. The included Docker setup uses S3Mock, not a production AWS deployment. Performance figures from local runs are environment-specific and are not production SLAs.
 
-## 1. Project Summary
+## At a glance
 
-A webhook is an automated HTTP message sent from one computer system to another when an event happens (for example, when a server monitoring tool detects high CPU usage and sends an alert payload).
+- **Secure ingestion:** HMAC-SHA256 signature verification against the raw request body, using constant-time comparison.
+- **Request idempotency:** Atomic Redis `SET NX` reservation with a 60-second TTL for repeat webhook deliveries.
+- **Burst protection:** A rolling in-process sliding-window rate limiter with `429 Too Many Requests` and `Retry-After` information.
+- **Asynchronous processing:** Celery workers handle alert normalization, incident correlation, and payload archiving outside the HTTP request.
+- **Concurrency control:** PostgreSQL advisory locks and row-level locking protect incident creation and updates under concurrent processing.
+- **Operational visibility:** Tracking IDs, structured task logging, health and API documentation routes, and local verification artifacts.
 
-SignalBridge acts as an ingestion gateway for these incoming messages. When an external service (such as PagerDuty, Datadog, or GitHub) sends a webhook, SignalBridge immediately validates the sender's identity, guards against duplicates, records the raw message, and returns an HTTP 202 Accepted status code so the sender does not time out. Heavy work—such as grouping alerts into incident tickets and archiving raw message bodies to cloud storage—is handed off to background worker processes.
+## Why I built it
 
-### What I Built:
-* An HTTP gateway built with Django and Django REST Framework that validates and acknowledges webhooks in an average of 13 ms (under 30 ms measured peak on local Docker).
-* A cryptographic verification check using HMAC-SHA256 and constant-time string comparison to reject fake or modified requests.
-* A duplicate-message filter using Redis that recognizes repeated webhook deliveries within a 60-second window and returns HTTP 200 without reprocessing.
-* A rolling rate limiter that tracks request timestamps to prevent any single sender from sending more requests than its allowed limit per minute.
-* A background processing pipeline using Celery and Redis that parses alerts, groups matching alerts under a single incident using database row locks, and uploads raw message copies to date-partitioned S3 storage.
+Webhook receivers need to acknowledge requests promptly without doing every downstream operation in the request cycle. They also need to handle retry deliveries safely, reject requests with invalid signatures, control bursts, and avoid opening multiple incident records when related alerts arrive concurrently.
 
----
+SignalBridge explores these backend problems in one reproducible local system. It separates **ingestion** from **processing**, uses different safeguards at the request and database layers, and includes automated checks for API behavior and concurrent incident creation.
 
-## 2. The Problems This Project Solves
+## Architecture
 
-When an online service receives automated webhooks from third-party platforms, four concrete engineering problems occur:
-
-1. **Senders Give Up If the Server Is Slow (Timeouts):**
-   External webhook senders expect an HTTP response within 2 to 5 seconds. If the receiving server attempts to parse data, query databases, and notify staff inside the HTTP request thread, the response takes too long. The sender cuts the connection and marks the delivery as failed.
-2. **Senders Resend the Same Message (Duplicate Processing):**
-   Networks occasionally drop connection packets. When a sender delivers a message successfully but does not receive the confirmation in time, it automatically resends the exact same message. Without duplicate detection, the receiver charges a customer twice or creates two separate incidents for the same outage.
-3. **Anyone Can Send Fake Messages (Security Vulnerabilities):**
-   Webhook receiver URLs are public web addresses on the internet. Any script or attacker can send fake HTTP POST requests. If the receiver does not verify a cryptographic signature attached to the message, it will accept fraudulent data.
-4. **Traffic Spikes Overload the Database (Connection Pool Exhaustion):**
-   During a cloud outage, monitoring tools can fire hundreds of alert webhooks per second. If every incoming request opens a separate connection to write directly to PostgreSQL, the database exceeds its maximum connection limit and crashes the web server.
-
----
-
-## 3. How It Works
-
-SignalBridge divides the work into two clear phases: immediate gateway checks (synchronous) and background processing (asynchronous).
-
-### Step-by-Step Execution:
-1. **Receive:** The sender sends an HTTP `POST` request to `/api/v1/webhooks/<source_slug>/` containing a JSON body and an `X-Signature-256` header.
-2. **Check Sender Allowed:** The gateway checks if the source slug exists in PostgreSQL and verifies that `is_active` is true. If deactivated, it immediately returns `HTTP 403 Forbidden`.
-3. **Check Signature:** The gateway reads the raw body bytes, calculates the expected HMAC-SHA256 signature using the shared secret key, and compares it to the incoming header using constant-time comparison. If invalid, it returns `HTTP 401 Unauthorized`.
-4. **Check Rate Limit:** The gateway checks how many requests this sender made in the last 60 seconds against its per-minute limit. If exceeded, it returns `HTTP 429 Too Many Requests`.
-5. **Check for Duplicates:** The gateway hashes the raw message body into a SHA-256 fingerprint and checks Redis. If the fingerprint exists, the gateway returns `HTTP 200 OK` (`duplicate_ignored`) without saving or reprocessing.
-6. **Save and Queue:** If fresh, the gateway records the incoming message in PostgreSQL with status `PENDING` and pushes a background task to the Redis queue.
-7. **Reply 202 Accepted:** The gateway returns `HTTP 202 Accepted` to the sender with a tracking ID in under 30 milliseconds.
-8. **Background Processing:** A Celery worker process pulls the task from the Redis queue.
-9. **Group Alerts into Incidents:** The worker normalizes the alert data, acquires an advisory lock on the alert fingerprint, updates or creates the parent incident with a row-level lock (`SELECT FOR UPDATE`), increments the alert count, and escalates severity if needed.
-10. **Archive to Storage:** The worker uploads the raw JSON payload to date-partitioned S3 object storage (or local S3Mock) and marks the database record as `PROCESSED`.
-
-### Architecture Flow Diagram:
-
-```text
-[ External Sender: PagerDuty / Datadog / GitHub ]
-                       │
-                       │ 1. HTTP POST with HMAC Signature
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│             GATEWAY TIER (Django REST Framework)            │
-│                                                             │
-│  • Check if source is active (return 403 if deactivated)    │
-│  • Verify HMAC-SHA256 signature (return 401 if invalid)     │
-│  • Check sliding-window rate limit (return 429 if exceeded) │
-│  • Check Redis duplicate key (return 200 if duplicate)      │
-│  • Save IngestedPayload row with status 'PENDING'           │
-│  • Push process_webhook task to Redis queue                 │
-│                                                             │
-│  ⚡ Returns HTTP 202 Accepted (< 30 ms)                     │
-└─────────────────────────────────────────────────────────────┘
-                       │
-                       │ Task enqueued in Redis broker
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│             BACKGROUND WORKER TIER (Celery)                 │
-│                                                             │
-│  • Pop task from Redis queue                                │
-│  • Calculate alert deduplication fingerprint                │
-│  • Acquire pg_advisory_xact_lock to prevent creation races  │
-│  • Acquire SELECT FOR UPDATE on Incident row                │
-│  • Increment alert_count and update incident severity       │
-│  • Upload raw JSON payload to S3 storage                    │
-│  • Update IngestedPayload row to status 'PROCESSED'         │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A[External webhook sender] -->|HTTP POST + HMAC signature| B[Django REST Framework gateway]
+    B --> C{Source registered and active?}
+    C -->|No| R1[404 or 403 response]
+    C -->|Yes| D[Verify HMAC-SHA256]
+    D -->|Invalid| R2[401 Unauthorized]
+    D -->|Valid| E[Sliding-window rate limit]
+    E -->|Exceeded| R3[429 Too Many Requests]
+    E -->|Allowed| F[Redis idempotency check]
+    F -->|Repeated request| R4[200 duplicate_ignored]
+    F -->|New request| G[(PostgreSQL: PENDING payload)]
+    G --> H[Enqueue Celery task via Redis]
+    H --> I[Celery worker]
+    I --> J[Normalize and correlate alert]
+    J --> K[(PostgreSQL: incidents, alerts, events)]
+    I --> L[(S3-compatible object storage / S3Mock)]
+    I --> M[Update payload processing status]
+    G --> R5[202 Accepted + tracking ID]
 ```
 
----
+### Request lifecycle
 
-## 4. Key Features
+1. Receive `POST /api/v1/webhooks/<source_slug>/` with a JSON body and signature header.
+2. Resolve the webhook source and check its `is_active` flag.
+3. Validate the HMAC-SHA256 signature against the original request bytes.
+4. Enforce the source's rolling-window rate limit.
+5. Check the Redis idempotency key. A repeated request within the TTL returns `200 OK` with `duplicate_ignored`.
+6. Persist a new payload as `PENDING`, enqueue `process_webhook`, and respond with `202 Accepted` and a tracking ID.
+7. A Celery worker normalizes the alert, correlates it with an open incident, updates severity and incident metadata, and attempts to archive the raw payload.
 
-| Feature | What It Does | Why It Matters | Implementation File |
-| :--- | :--- | :--- | :--- |
-| **Fast Webhook Acknowledgment** | Accepts requests and returns `HTTP 202 Accepted` in under 30 ms. | Prevents third-party senders from timing out and retrying. | [`apps/webhooks/views.py`](apps/webhooks/views.py) |
-| **HMAC-SHA256 Signature Check** | Recalculates a cryptographic signature from raw request bytes and compares it using `hmac.compare_digest()`. | Blocks unauthorized senders and prevents side-channel timing attacks. | [`apps/webhooks/security.py`](apps/webhooks/security.py) |
-| **Duplicate Message Suppression** | Stores a SHA-256 fingerprint in Redis for 60 seconds using atomic `SET NX`. | Stops repeated network retries from creating duplicate actions or database entries. | [`apps/core/dsa/idempotency.py`](apps/core/dsa/idempotency.py) |
-| **Sliding-Window Rate Limiter** | Tracks incoming request timestamps over a 60-second rolling window. | Prevents burst traffic from overloading application workers. | [`apps/core/dsa/sliding_window.py`](apps/core/dsa/sliding_window.py) |
-| **Concurrency Incident Locking** | Uses PostgreSQL transaction advisory locks and row-level locks (`SELECT FOR UPDATE`). | Guarantees that 20 alerts arriving at the same millisecond attach to 1 single incident instead of creating 20 duplicate tickets. | [`apps/alerts/services.py`](apps/alerts/services.py) |
-| **Tiered Cold Storage Archiving** | Offloads raw JSON bodies to S3-compatible storage with date keys (`archives/slug/YYYY/MM/DD/id.json`). | Prevents the PostgreSQL database from growing too large over time. | [`apps/webhooks/archival.py`](apps/webhooks/archival.py) |
-| **Source Kill Switch** | Rejects requests for inactive sources in 5 ms with `HTTP 403 Forbidden`. | Allows operators to turn off a compromised or misbehaving sender immediately. | [`apps/webhooks/views.py`](apps/webhooks/views.py) |
+## Engineering decisions worth exploring
 
----
+| Area | Implementation | Why it matters |
+|---|---|---|
+| Webhook authenticity | HMAC-SHA256 over raw request bytes and `hmac.compare_digest()` | Authenticates the payload and avoids ordinary early-exit string comparison. |
+| Request idempotency | SHA-256 payload fingerprint with Redis `SET NX` and a 60-second TTL | Prevents an identical webhook delivery from being persisted and queued again during the reservation window. |
+| Rate limiting | `collections.deque`-based sliding window guarded by a thread lock | Demonstrates rolling-window eviction and per-source burst protection in a local single-process implementation. |
+| Incident correlation | PostgreSQL transaction advisory lock plus `SELECT FOR UPDATE` | Serializes competing workers that may otherwise create multiple incidents for the same service and fingerprint. |
+| Severity escalation | Normalize severity values and compare priority before updating an open incident | Lets a higher-priority alert raise the severity of an existing incident. |
+| Async processing | Celery task with primitive payload ID, late acknowledgements, and retry configuration | Keeps downstream work out of the HTTP request handler and separates web and worker processes. |
+| Payload archiving | Boto3 client targeting S3Mock locally | Exercises S3-compatible object storage without requiring an AWS account for local development. |
+| API contract | OpenAPI schema and Swagger UI/ReDoc routes | Makes the endpoint contract discoverable and easier to inspect. |
 
-## 5. Technology Used and Why
+## Tech stack
 
-| Technology | What It Does Here | Why It Was Chosen |
-| :--- | :--- | :--- |
-| **Python 3.11+** | Primary programming language. | Includes standard cryptographic tools (`hmac`, `hashlib`) and backend ecosystem support. |
-| **Django 5 & DRF** | Web framework and REST API routing. | Provides clean URL routing, request parsing, and reliable database ORM models. |
-| **PostgreSQL 16** | Relational database (ACID compliant). | Stores sources, alert models, incident records, and supports row-level locks (`SELECT FOR UPDATE`) and advisory locks. |
-| **Redis 7** | In-memory cache and task broker. | Delivers fast key lookups for duplicate checks and queues tasks for Celery workers. |
-| **Celery 5.4+** | Background worker process runner. | Moves alert normalization, incident grouping, and file storage out of the HTTP request. |
-| **AWS S3 (via Boto3)** | Cloud object storage for message archives. | Designed for storing large, unstructured files at low cost. Standard Boto3 client calls are production-ready. |
-| **Adobe S3Mock** | Local S3 emulator running in Docker. | Allows complete testing of S3 file uploads and downloads on a local computer without needing an AWS account or internet connection. |
-| **Docker & Compose** | Container management for all 5 services. | Runs PostgreSQL, Redis, S3Mock, Django web, and Celery worker in an isolated, reproducible environment. |
-| **GitHub Actions** | Automated CI pipeline. | Runs automated tests on every code push to verify that tests pass before merging. |
+- **Language:** Python 3.11
+- **API:** Django 5.1, Django REST Framework
+- **Database:** PostgreSQL 16
+- **Cache and task broker:** Redis 7
+- **Background jobs:** Celery 5.4
+- **Object storage interface:** Boto3 with Adobe S3Mock for local testing
+- **Testing and quality:** pytest, pytest-django, pytest-cov, Newman/Postman
+- **Local orchestration:** Docker, Docker Compose
+- **CI:** GitHub Actions workflow at [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-> **Environment Note:** When running locally with Docker Compose, S3Mock simulates AWS S3 on port 9090. To use real AWS S3 in a cloud deployment, update the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_STORAGE_BUCKET_NAME` variables in `.env`.
+## Verification and evidence
 
----
+The project includes unit, integration, and concurrency tests, plus a Postman collection for exercising the API through HTTP.
 
-## 6. Results and Proof
+| Check | Reported result | Evidence / command |
+|---|---|---|
+| Pytest suite | **57 tests** in the latest run reported by the project owner | Run `docker compose exec web pytest -q` after starting the environment. |
+| Coverage | **92% statement coverage** reported in a local run; rerun to refresh the number after code changes | `docker compose exec web pytest --cov=apps --cov-report=term-missing` |
+| Newman API verification | **14 requests, 28 assertions, zero failures** in the recorded run | [`postman/SignalBridge_API_Verification.postman_collection.json`](postman/SignalBridge_API_Verification.postman_collection.json) |
+| Concurrent incident creation | Test exercises **20 concurrent threads** and asserts a single incident is created for matching alerts | [`tests/concurrency/test_incident_locking.py`](tests/concurrency/test_incident_locking.py) |
 
-All performance numbers below were **measured on a local Docker setup**:
+The recorded Newman run reports local response-time measurements, but timings vary by machine and environment. The repository's current screenshots do not all show the same latency range, so **do not treat the historical figures as a guaranteed latency SLA**. Refresh the benchmark and its screenshots before making a performance claim.
 
-| What Was Measured | Result | How It Was Measured | Visual Evidence |
-| :--- | :--- | :--- | :--- |
-| **Webhook Acknowledgment Time** | **30 ms** peak *(Avg: 13 ms)* | Postman live request to `/api/v1/webhooks/pagerduty/` | [`evidence/screenshots/03-webhook-accepted.png`](evidence/screenshots/03-webhook-accepted.png) |
-| **Duplicate Message Suppression** | **15 ms** (`HTTP 200 duplicate_ignored`) | Postman replaying identical payload within 60s | [`evidence/screenshots/05-idempotency.png`](evidence/screenshots/05-idempotency.png) |
-| **Rate Limit Burst Enforcement** | **13 ms** (`HTTP 429 Too Many Requests`) | Postman firing requests exceeding allowed quota | [`evidence/screenshots/06-rate-limit.png`](evidence/screenshots/06-rate-limit.png) |
-| **Invalid Signature Rejection** | **12 ms** (`HTTP 401 Unauthorized`) | Postman request with modified signature header | [`evidence/screenshots/04-hmac-rejected.png`](evidence/screenshots/04-hmac-rejected.png) |
-| **Missing Signature Header** | **20 ms** (`HTTP 401 Unauthorized`) | Postman request with no signature header | [`evidence/screenshots/postman-missing-signature.png`](evidence/screenshots/postman-missing-signature.png) |
-| **Deactivated Source Kill Switch** | **5 ms** (`HTTP 403 Forbidden`) | Postman request to inactive source endpoint | [`evidence/screenshots/postman-deactivated-source-403.png`](evidence/screenshots/postman-deactivated-source-403.png) |
-| **Unregistered Source Slug** | **18 ms** (`HTTP 404 Not Found`) | Postman request to an unknown source slug | [`evidence/screenshots/postman-unknown-source-404.png`](evidence/screenshots/postman-unknown-source-404.png) |
-| **Malformed JSON Envelope** | **18 ms** (`HTTP 400 Bad Request`) | Postman request missing the required payload body | [`evidence/screenshots/postman-malformed-body.png`](evidence/screenshots/postman-malformed-body.png) |
-| **Background Processing Time** | **0.0865s (86 ms)** | Celery worker log output during correlation and S3 upload | [`evidence/screenshots/08-celery-worker.png`](evidence/screenshots/08-celery-worker.png) |
-| **PostgreSQL Index Scan Query** | **0.078 ms** execution time | pgAdmin 4 running `EXPLAIN (ANALYZE, BUFFERS)` on B-Tree index | [`evidence/screenshots/09-query-plan.png`](evidence/screenshots/09-query-plan.png) |
-| **Automated Postman Suite** | **14 / 14 requests passed (28 / 28 assertions, 1074 ms)** | Automated Newman CLI run against all collection folders | [`postman/README.md`](postman/README.md) |
-| **Concurrency Incident Safety** | **20 threads $\rightarrow$ 1 Incident, 0 duplicates** | Automated Python thread-pool test with real database locks | [`tests/concurrency/test_incident_locking.py`](tests/concurrency/test_incident_locking.py) |
+### Screenshots
 
-### Visual Snapshots as Proof
-
-To verify each claim, visual snapshots were captured from the local Docker runtime, Postman runs, pgAdmin 4 database queries, and Celery worker logs. Click any snapshot below to view the visual proof:
+These screenshots illustrate selected local checks. They are demonstrations from a development environment, not proof of production deployment.
 
 <details>
-<summary>📸 <b>Snapshot 1: Webhook Acknowledgment in 30 ms (HTTP 202 Accepted)</b></summary>
+<summary>API health and documentation</summary>
 
-* **Proof:** Postman executes `POST /api/v1/webhooks/pagerduty/` and receives an HTTP 202 Accepted response with a tracking ID (`trc-pd-1792149726016`) in 30 ms. Both response tests pass.
-![Webhook Acknowledged in 30ms](evidence/screenshots/03-webhook-accepted.png)
+![API health](evidence/screenshots/02-api-health.png)
+
 </details>
 
 <details>
-<summary>📸 <b>Snapshot 2: Duplicate Message Suppression in 15 ms (HTTP 200 duplicate_ignored)</b></summary>
+<summary>Invalid HMAC signature rejected</summary>
 
-* **Proof:** Replaying the identical payload within the 60-second window receives an immediate HTTP 200 response with `"status": "duplicate_ignored"` in 15 ms without reprocessing.
-![Duplicate Message Suppressed](evidence/screenshots/05-idempotency.png)
+![HMAC verification failure](evidence/screenshots/04-hmac-rejected.png)
+
 </details>
 
 <details>
-<summary>📸 <b>Snapshot 3: HMAC Signature Rejection in 12 ms (HTTP 401 Unauthorized)</b></summary>
+<summary>Repeated webhook request detected</summary>
 
-* **Proof:** Sending a request with an invalid signature header is rejected in 12 ms with an HTTP 401 Unauthorized status.
-![HMAC Signature Rejection](evidence/screenshots/04-hmac-rejected.png)
+![Idempotency response](evidence/screenshots/05-idempotency.png)
+
 </details>
 
 <details>
-<summary>📸 <b>Snapshot 4: Rate Limit Burst Enforcement in 13 ms (HTTP 429 Too Many Requests)</b></summary>
+<summary>Rate limit exceeded</summary>
 
-* **Proof:** Firing requests that exceed the per-minute limit triggers an HTTP 429 response in 13 ms with an explicit retry delay.
-![Rate Limit Burst Enforcement](evidence/screenshots/06-rate-limit.png)
+![Rate limit response](evidence/screenshots/06-rate-limit.png)
+
 </details>
 
 <details>
-<summary>📸 <b>Snapshot 5: Celery Background Worker Execution in 0.086s</b></summary>
+<summary>Celery background worker log</summary>
 
-* **Proof:** Celery container logs show task `process_webhook` received, alert correlated, raw JSON uploaded to S3, and execution completed successfully in 0.086554s.
-![Celery Worker Execution Log](evidence/screenshots/08-celery-worker.png)
+![Celery worker](evidence/screenshots/08-celery-worker.png)
+
 </details>
 
 <details>
-<summary>📸 <b>Snapshot 6: PostgreSQL B-Tree Index Scan in 0.078 ms</b></summary>
+<summary>PostgreSQL query plan</summary>
 
-* **Proof:** pgAdmin 4 running `EXPLAIN (ANALYZE, BUFFERS)` shows an `Index Scan Backward` on the `created_at` B-Tree index completing in 0.078 ms execution time.
-![PostgreSQL Query Plan](evidence/screenshots/09-query-plan.png)
+![PostgreSQL query plan](evidence/screenshots/09-query-plan.png)
+
 </details>
 
-<details>
-<summary>📸 <b>Snapshot 7: Database Record Marked PROCESSED with S3 Cold Storage Key</b></summary>
+## Run locally
 
-* **Proof:** pgAdmin 4 table view shows database records updated to `status = 'PROCESSED'` with the date-partitioned `s3_payload_key` populated.
-![PostgreSQL Processed Record](evidence/screenshots/07-postgres-processed.png)
-</details>
+### Prerequisites
 
----
+- Docker Desktop with Docker Compose
+- Git
 
-## 7. Project File Structure
+### 1. Clone the repository
 
-```text
-signalbridge/
-├── .github/workflows/
-│   └── ci.yml               # GitHub Actions continuous integration workflow
-├── apps/
-│   ├── alerts/              # Incident models, alert correlation, and row-level locks
-│   ├── analytics/           # Metric tracking models
-│   ├── core/                # Shared utilities: rate limiting, retry queue, idempotency
-│   └── webhooks/            # Webhook ingestion view, HMAC verification, S3 archiver
-├── config/
-│   ├── settings/            # Configuration files (base.py, local.py, production.py, test.py)
-│   ├── celery.py            # Celery worker application configuration
-│   └── urls.py              # Main URL routing and OpenAPI documentation endpoints
-├── evidence/
-│   ├── screenshots/         # Visual proof screenshots and SHA-256 integrity audit
-│   ├── pgadmin-payloads-export.csv  # Database export of processed payloads with S3 keys
-│   └── README.md            # Evidence index and performance summary
-├── postman/
-│   ├── SignalBridge_Zero_Setup_Verification.postman_collection.json  # 1-click test collection
-│   ├── SignalBridge_API_Verification.postman_collection.json         # Strict environment collection
-│   ├── SignalBridge_Environment_Template.postman_environment.json   # Sanitized environment template
-│   └── README.md            # Detailed Postman and Newman execution instructions
-├── requirements/
-│   ├── base.txt             # Core dependencies (Django, DRF, Celery, psycopg, boto3)
-│   ├── local.txt            # Local testing dependencies (pytest, ruff, ipython)
-│   └── production.txt       # Production web server dependencies (gunicorn)
-├── tests/
-│   ├── concurrency/         # Multi-threaded race condition tests (20 parallel workers)
-│   ├── integration/         # Full end-to-end API, Celery task, and documentation route tests
-│   └── unit/                # Unit tests for rate limiting, retry queue, and deduplication
-├── .dockerignore            # Files excluded from Docker builds
-├── .env.example             # Template file showing required environment variables
-├── .gitignore               # Files excluded from git tracking
-├── docker-compose.yml       # Configuration for all 5 containers
-├── Dockerfile               # Instructions to build the Python application container
-├── manage.py                # Django command-line management tool
-├── pytest.ini               # Pytest settings and test discovery configuration
-├── schema.yml               # Complete OpenAPI 3.0 API specification
-└── README.md                # Main project documentation
-```
-
-### Explanation of Folders and Files:
-
-| Folder / File | What It Does |
-| :--- | :--- |
-| [`apps/alerts/`](apps/alerts/) | Stores alert and incident models; handles grouping alerts under incidents using row-level locks. |
-| [`apps/webhooks/`](apps/webhooks/) | Contains the main ingestion view, HMAC verification logic, Celery tasks, and S3 file archiver. |
-| [`apps/core/`](apps/core/) | Contains shared modules: the in-memory sliding-window rate limiter, retry queue, and Redis idempotency manager. |
-| [`config/`](config/) | Holds Django project configuration, modular settings (`base`, `local`, `production`, `test`), Celery setup, and URL routes. |
-| [`tests/concurrency/`](tests/concurrency/) | Verifies that 20 simultaneous threads processing identical alerts create only 1 parent incident. |
-| [`tests/integration/`](tests/integration/) | Verifies that webhooks complete the full cycle: ingestion, validation, Celery queuing, and storage. |
-| [`tests/unit/`](tests/unit/) | Verifies individual components in isolation: signature checks, rate limiting windows, and retry scheduling. |
-| [`postman/`](postman/) | Provides ready-to-import Postman collections with automated pre-request HMAC calculation scripts. |
-| [`evidence/`](evidence/) | Stores screenshot evidence, database CSV exports, and cryptographic file checksums proving test results. |
-| [`docker-compose.yml`](docker-compose.yml) | Defines and connects the 5 Docker containers (web, worker, PostgreSQL, Redis, S3Mock). |
-| [`Dockerfile`](Dockerfile) | Builds the Debian-based Python 3.11 application image used by the web and worker containers. |
-| [`schema.yml`](schema.yml) | Describes every endpoint, parameter, and HTTP response code using the OpenAPI 3.0 standard. |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Automates running the test suite on GitHub whenever code is committed or merged. |
-
----
-
-## 8. Challenges and Solutions
-
-### 1. Duplicate Incidents When Multiple Alerts Arrive at Once
-* **The Problem:** When an outage occurs, multiple worker processes receive alerts for the same issue at the same millisecond. If all processes check the database simultaneously, none find an existing incident, so every process creates a new one. This causes duplicate incident tickets for a single outage.
-* **The Solution:** A two-phase locking sequence was implemented in [`apps/alerts/services.py`](apps/alerts/services.py). First, workers compute a numeric hash of the alert's fingerprint and acquire a PostgreSQL transaction advisory lock (`pg_advisory_xact_lock`). This forces workers with matching alert fingerprints to line up sequentially. Second, the worker updating the incident acquires a row lock (`SELECT FOR UPDATE`), incrementing the alert count and escalating severity safely.
-
-### 2. Preventing Side-Channel Timing Attacks on Signatures
-* **The Problem:** Standard string comparison (`==`) compares text one character at a time and stops at the first mismatch. An attacker can send thousands of requests with different characters and measure microscopic time differences to guess the secret signature.
-* **The Solution:** In [`apps/webhooks/security.py`](apps/webhooks/security.py), signature validation uses Python's built-in `hmac.compare_digest()`. This function takes the exact same amount of time to compare strings regardless of how many characters match, removing timing clues.
-
-### 3. Preventing Database Bloat from Raw Payloads
-* **The Problem:** Incoming webhook payloads can be large JSON objects (up to 50 KB each). Storing thousands of raw payloads directly in PostgreSQL increases database disk usage and slows down index searches.
-* **The Solution:** In [`apps/webhooks/archival.py`](apps/webhooks/archival.py), Celery workers stream the raw JSON body to S3 object storage (or local S3Mock) under a date-partitioned path (`archives/<slug>/<YYYY>/<MM>/<DD>/<id>.json`). PostgreSQL only stores a lightweight text pointer (`s3_payload_key`) to the file.
-
-### 4. Preventing Traffic Spikes at Minute Boundaries
-* **The Problem:** Simple rate limiters that reset every calendar minute allow a client to send its full allowance at second 59 and another full allowance at second 01 of the next minute, causing double the intended traffic.
-* **The Solution:** In [`apps/core/dsa/sliding_window.py`](apps/core/dsa/sliding_window.py), a rolling sliding window tracks individual request timestamps. Timestamps older than 60 seconds are discarded continuously, ensuring the sender never exceeds its quota across any 60-second span.
-
----
-
-## 9. How to Run and Verify
-
-### Prerequisites:
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/) (version 20+ with Docker Compose)
-* Git
-
-### Step 1: Clone the Repository
 ```bash
 git clone https://github.com/Karthik-bhandarkar/signalbridge.git
 cd signalbridge
 ```
 
-### Step 2: Set Up Environment Variables
-Copy the pre-configured local development template:
+### 2. Create the local environment file
+
+**macOS / Linux / Git Bash:**
+
 ```bash
 cp .env.example .env
 ```
 
-### Step 3: Start the Multi-Container Stack
-Build and launch all 5 containers (PostgreSQL, Redis, S3Mock, Web, Celery Worker):
+**Windows PowerShell:**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+The example file is for local development. Review its values before running the application. Never commit `.env` or real credentials.
+
+### 3. Build and start the services
+
 ```bash
 docker compose up -d --build
-```
-Check that all containers are running:
-```bash
 docker compose ps
 ```
 
-### Step 4: Run the Automated Tests
-Run the test suite inside the running web container:
+The Compose configuration starts five services: PostgreSQL, Redis, S3Mock, the Django web service, and a Celery worker.
+
+### 4. Apply database migrations
+
 ```bash
-docker compose exec web pytest
+docker compose exec web python manage.py migrate
 ```
 
-### Step 5: Test with Postman (Zero-Setup 1-Click Option)
-1. Open Postman.
-2. Click **Import** and select [`postman/SignalBridge_Zero_Setup_Verification.postman_collection.json`](postman/SignalBridge_Zero_Setup_Verification.postman_collection.json).
-3. Open any request (for example, `01 - Valid Webhook (202 Accepted)`) and click **Send**.
-4. The bundled pre-request script calculates the HMAC-SHA256 signature automatically. You do not need to configure an external environment file.
+### 5. Run the tests
 
-### Step 6: Test Headlessly with Newman (Optional)
-If you have [Node.js](https://nodejs.org/) and Newman installed:
+```bash
+docker compose exec web pytest -q
+```
+
+For statement coverage:
+
+```bash
+docker compose exec web pytest --cov=apps --cov-report=term-missing
+```
+
+### 6. Open the local API
+
+- Health endpoint: `http://localhost:8000/`
+- OpenAPI schema: `http://localhost:8000/api/schema/`
+- Swagger UI: `http://localhost:8000/api/docs/`
+- ReDoc: `http://localhost:8000/api/redoc/`
+
+### 7. Run the API verification collection
+
+1. Start the Docker Compose environment and ensure the required webhook sources exist in the local database.
+2. Import [`postman/SignalBridge_API_Verification.postman_collection.json`](postman/SignalBridge_API_Verification.postman_collection.json) into Postman.
+3. Import [`postman/SignalBridge_Environment_Template.postman_environment.json`](postman/SignalBridge_Environment_Template.postman_environment.json) and select it.
+4. Set `baseUrl`, source slugs, and `webhookSecret` to match your local configuration. The environment template intentionally uses a placeholder for the HMAC secret.
+5. Run the collection and review the HTTP status and assertion results.
+
+If Newman is installed, run the collection from the repository root:
+
 ```bash
 newman run postman/SignalBridge_API_Verification.postman_collection.json \
   -e postman/SignalBridge_Environment_Template.postman_environment.json
 ```
 
----
+## API overview
 
-## 10. API Overview
+**Primary endpoint:** `POST /api/v1/webhooks/<source_slug>/`
 
-Defined in [`schema.yml`](schema.yml) and available interactively in your browser at `http://127.0.0.1:8000/api/docs/`:
+Required headers:
 
-### Primary Ingestion Endpoint:
-* **Method:** `POST`
-* **Path:** `/api/v1/webhooks/<source_slug>/`
-* **Headers:**
-  * `Content-Type: application/json`
-  * `X-Signature-256: sha256=<hex_digest>` (or `X-Signature-SHA256`)
-  * `X-Tracking-Id: <optional_client_id>`
-* **Request Body Example:**
-  ```json
-  {
-    "event_type": "alert.trigger",
-    "tracking_id": "trc-example-1001",
-    "payload": {
-      "service": "payment-api",
-      "severity": "CRITICAL",
-      "fingerprint": "database-timeout",
-      "title": "Database connection pool exhausted",
-      "description": "API latency exceeded 5000ms"
-    }
+```http
+Content-Type: application/json
+X-Signature-256: sha256=<hex_digest>
+```
+
+Example request body:
+
+```json
+{
+  "event_type": "alert.trigger",
+  "tracking_id": "trc-example-1001",
+  "payload": {
+    "service": "payment-api",
+    "severity": "CRITICAL",
+    "fingerprint": "database-timeout",
+    "title": "Database connection pool exhausted",
+    "description": "API latency exceeded 5000ms"
   }
-  ```
+}
+```
 
-### HTTP Response Status Codes:
+| HTTP status | Meaning |
+|---|---|
+| `202 Accepted` | Valid, new webhook persisted and queued for asynchronous processing. |
+| `200 OK` | Identical webhook request recognized within the idempotency TTL. |
+| `400 Bad Request` | Invalid request envelope. |
+| `401 Unauthorized` | Missing or invalid HMAC signature. |
+| `403 Forbidden` | Webhook source exists but is inactive. |
+| `404 Not Found` | Source slug is not registered. |
+| `429 Too Many Requests` | Source rate limit exceeded; response includes a retry hint. |
 
-| Status Code | Reason | Meaning |
-| :--- | :--- | :--- |
-| `202 Accepted` | Webhook queued | Signature is valid, rate limit is clean, payload saved and task pushed to worker queue. |
-| `200 OK` | `duplicate_ignored` | Identical payload received within the 60-second deduplication window; ignored without reprocessing. |
-| `400 Bad Request` | Invalid envelope | Request body is empty or missing the required `"payload"` field. |
-| `401 Unauthorized` | Invalid signature | Missing, tampered, or mismatched HMAC cryptographic signature header. |
-| `403 Forbidden` | Source deactivated | Webhook source exists but its `is_active` flag is set to false (kill switch active). |
-| `404 Not Found` | Unknown source | The `source_slug` provided in the URL does not exist in the database. |
-| `429 Too Many Requests` | Rate limit exceeded | Sender exceeded its per-minute burst quota; includes a `Retry-After` header. |
+## Known limitations and next steps
+
+SignalBridge is a local engineering project and has not been presented as a production deployment. Before using it for real traffic, the following areas need additional hardening:
+
+- **Distributed rate limiting:** the current sliding-window limiter keeps state in process memory. Multiple web replicas would each maintain a separate counter; a shared Redis-backed limiter would be needed for a cluster-wide limit.
+- **Ingestion consistency:** the Redis idempotency reservation is acquired before payload persistence and task enqueueing. A crash in that interval can suppress a retry even though durable ingestion did not finish. A transactional outbox or carefully designed reservation/rollback flow would strengthen this boundary.
+- **Archive failure semantics:** the worker should not report a payload as successfully processed when archival fails or returns no storage key. Error propagation, retry behavior, and processing status transitions should be hardened and covered by tests before production use.
+- **Load and latency benchmarks:** run repeatable measurements with documented concurrency, warm-up, sample count, and environment. Do not infer production throughput from individual local requests.
+- **Production deployment:** real AWS S3 credentials, IAM policies, secure Django settings, secret management, logging/monitoring, and deployment configuration are not supplied by the local S3Mock-based setup.
+
+## Repository layout
+
+```text
+apps/
+  alerts/       # Alert and incident models, correlation, incident services
+  analytics/    # Analytics and metrics models
+  core/dsa/     # Idempotency, sliding-window rate limiting, retry min-heap
+  webhooks/     # Ingestion API, signatures, Celery tasks, S3 archiving
+config/         # Django settings, URL configuration, Celery setup
+requirements/   # Base, local, and test dependencies
+tests/
+  unit/         # Unit tests for core utilities
+  integration/  # API, worker lifecycle, docs/admin checks
+  concurrency/  # Concurrent incident-creation test
+postman/        # API collection and sanitized environment template
+evidence/       # Verification screenshots, evidence index, data export
+schema.yml      # OpenAPI schema
+Dockerfile
+docker-compose.yml
+pytest.ini
+```
+
+## Author
+
+**Karthik Bhandarkar**
+
+- GitHub: [@Karthik-bhandarkar](https://github.com/Karthik-bhandarkar)
+- Project repository: [SignalBridge](https://github.com/Karthik-bhandarkar/signalbridge)
 
 ---
 
-## 11. Known Limitations and Future Improvements
-
-* **In-Memory Rate Limiting Scope:**
-  * *Current state:* The sliding-window rate limiter stores timestamps in the memory of the specific web container process. If you run multiple web container instances behind a load balancer, each instance tracks its own counter.
-  * *Future improvement:* Move sliding-window timestamp tracking into a shared Redis sorted set so limits are enforced collectively across all application instances.
-* **Idempotency Key Reservation Window:**
-  * *Current state:* In [`apps/webhooks/views.py`](apps/webhooks/views.py), the duplicate-check key is reserved in Redis immediately before the initial database write and Celery task enqueue. If the server loses power or crashes during that brief gap, the message is not saved, but an immediate retry from the sender within 60 seconds would be treated as a duplicate.
-  * *Future improvement:* Implement a transactional outbox pattern where the message and its task are committed in a single database transaction before confirming the Redis key.
-* **Storage Provider Configuration:**
-  * *Current state:* Local development relies on S3Mock. Running in production requires setting real AWS credentials in `.env` and ensuring the target S3 bucket exists.
-  * *Future improvement:* Add automated Terraform or CloudFormation scripts to provision production S3 buckets, IAM roles, and Redis clusters.
-
----
-
-## 12. Glossary
-
-* **Webhook:** An automated HTTP POST request sent from an external service to notify another system about an event.
-* **HMAC (Hash-based Message Authentication Code):** A digital signature created by combining the message text with a secret key using cryptographic hashing (SHA-256) to verify authenticity.
-* **Constant-Time Comparison:** A string comparison method that always takes the same amount of time regardless of how many characters match, preventing attackers from timing responses to guess secrets.
-* **Idempotency:** A property where processing the exact same message multiple times produces the exact same result as processing it once.
-* **Queue:** A temporary holding list (managed here by Redis) that stores tasks waiting to be picked up by worker processes.
-* **Worker:** A background program (managed here by Celery) that takes jobs from a queue and runs heavy processing outside the HTTP request.
-* **Row-Level Lock (`SELECT FOR UPDATE`):** A database instruction that temporarily locks a specific record so only one worker can edit it at a time, preventing race conditions.
-* **Advisory Lock (`pg_advisory_xact_lock`):** An application-defined lock in PostgreSQL used to serialize worker actions based on an arbitrary numeric ID.
-* **S3 (Simple Storage Service):** A cloud object storage service designed to store files, logs, and raw data efficiently.
-
----
-
-## 13. Author & License
-
-* **Author:** Karthik Bhandarkar
-* **Repository:** [https://github.com/Karthik-bhandarkar/signalbridge](https://github.com/Karthik-bhandarkar/signalbridge)
-* **License:** Distributed under the **MIT License**.
+*Note: This README describes the current local implementation and its reported test evidence. Re-run the test suite and refresh any performance screenshots after code changes so the public documentation stays aligned with the repository.*
