@@ -11,12 +11,12 @@
 | Gate | Description | Status | Completion Timestamp (UTC) | Verified By |
 | :---: | :--- | :---: | :---: | :---: |
 | **Gate 1** | Local Implementation & Configuration Preparation | 🟢 **COMPLETED** | 2026-10-26 12:00 UTC | Antigravity IDE |
-| **Gate 2** | GitHub Repository Update & Review | 🟡 **PENDING APPROVAL** | - | User Review |
-| **Gate 3** | Terraform Infrastructure Plan Review | ⚪ NOT STARTED | - | - |
-| **Gate 4** | AWS Infrastructure Provisioning | ⚪ NOT STARTED | - | - |
-| **Gate 5** | Application Deployment & RDS Initialization | ⚪ NOT STARTED | - | - |
-| **Gate 6** | Synthetic Incident Scenario Execution on AWS | ⚪ NOT STARTED | - | - |
-| **Gate 7** | Evidence Package & Local vs AWS Comparison | ⚪ NOT STARTED | - | - |
+| **Gate 2** | GitHub Repository Update & Review | 🟢 **COMPLETED** | 2026-10-26 12:35 UTC | User Push (`9bec1b5`) |
+| **Gate 3** | AWS Networking & Security Setup (VPC, Subnets, SGs) | 🟢 **COMPLETED** | 2026-10-26 17:50 UTC | User AWS Console |
+| **Gate 4** | AWS Storage & Database (S3, RDS) | 🟢 **COMPLETED** | 2026-10-26 18:15 UTC | RDS Available & S3 Ready |
+| **Gate 5** | Compute Deployment (EC2, Docker Compose, Nginx) | 🟢 **COMPLETED** | 2026-10-26 18:31 UTC | All 4 Containers Up & Migrations OK |
+| **Gate 6** | Routing & Ingestion Test (ALB, CloudFront, Incident Scenario) | 🟢 **COMPLETED** | 2026-10-26 18:54 UTC | Live Scenario Script Verified (7/7 Steps) |
+| **Gate 7** | Evidence Package & Verification | 🟡 **IN PROGRESS** | - | Screenshot Capture & S3 Audit |
 | **Gate 8** | Complete Teardown & Post-Cleanup Verification | ⚪ NOT STARTED | - | - |
 
 ---
@@ -42,33 +42,33 @@
 
 | Resource Type | Resource Name / Identifier | Physical ID / ARN | Provisioned In | Destroyed In | Verified Removed |
 | :--- | :--- | :--- | :--- | :--- | :---: |
-| **CloudFront** | `signalbridge-cloudfront` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **ALB** | `signalbridge-alb` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **ALB Listener** | HTTP Listener (80) | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **ALB Target Group** | `signalbridge-tg` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **EC2 Instance** | `signalbridge-ec2-host` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **EBS Root Volume** | 30GB gp3 | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **RDS PostgreSQL** | `signalbridge-db` (16.3) | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **RDS Subnet Group**| `signalbridge-rds-subnets` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **ElastiCache Redis**| `signalbridge-redis` (7.1) | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **Redis Subnet Group**| `signalbridge-redis-subnets`| *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **S3 Bucket** | `signalbridge-production-archives-*`| *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **Secrets Manager** | `signalbridge-secrets-*` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **IAM Role** | `signalbridge-ec2-role-*` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **IAM Policy** | `signalbridge-s3-archival-policy-*`| *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **Instance Profile**| `signalbridge-ec2-profile-*`| *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **Security Groups** | ALB, EC2, RDS, Redis SGs | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **VPC & Subnets** | `signalbridge-vpc` (4 subnets)| *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
-| **Internet Gateway**| `signalbridge-igw` | *Pending Gate 4* | Gate 4 | Gate 8 | [ ] |
+| **AWS Region** | Sydney | `ap-southeast-2` | Step 1 | - | - |
+| **VPC** | `signalbridge-vpc` | `vpc-085e5cde7f9be901a` | Step 1 | Step 12 | [ ] |
+| **Public Subnet 1** | `signalbridge-subnet-public1-ap-southeast-2a` | `subnet-0a9ab9bb38938378e` | Step 1 | Step 12 | [ ] |
+| **Public Subnet 2** | `signalbridge-subnet-public2-ap-southeast-2b` | `subnet-01c1881887f6e227d` | Step 1 | Step 12 | [ ] |
+| **Private Subnet 1** | `signalbridge-subnet-private1-ap-southeast-2a` | `subnet-0fee8faeb0751a3e7` | Step 1 | Step 12 | [ ] |
+| **Private Subnet 2** | `signalbridge-subnet-private2-ap-southeast-2b` | `subnet-0e8878a7bf686d45e` | Step 1 | Step 12 | [ ] |
+| **RDS Subnet Group** | `signalbridge-db-subnet-group` | `ap-southeast-2` | Step 6.1 | Step 12 | [ ] |
+| **Internet Gateway**| Attached to `signalbridge-vpc` | AWS Managed via VPC setup | Step 1 | Step 12 | [ ] |
+| **Security Group (ALB)** | `signalbridge-alb-sg` | `sg-07d770a36850f9a1c` | Step 3.1 | Step 12 | [ ] |
+| **Security Group (EC2)** | `signalbridge-ec2-sg` | `sg-05b244a5d8d746b83` | Step 3.2 | Step 12 | [ ] |
+| **Security Group (RDS)** | `signalbridge-rds-sg` | `sg-0496ac79d4aeffb32` | Step 3.3 | Step 12 | [ ] |
+| **S3 Bucket** | `signalbridge-archive-karthik-syd-2026` | `arn:aws:s3:::signalbridge-archive-karthik-syd-2026` | Step 4.1 | Step 12 | [ ] |
+| **IAM Role** | `signalbridge-ec2-role` | `arn:aws:iam::...:role/signalbridge-ec2-role` | Step 4.2 | Step 12 | [ ] |
+| **EC2 Instance** | `signalbridge-app-server` (`32.236.185.16`) | `i-04871c02d6410e5e2` | Step 5 | Step 12 | [ ] |
+| **RDS PostgreSQL** | `signalbridge-db` (user: `signalbridge`, db: `signalbridge_db`) | `signalbridge-db.czokg88023gy.ap-southeast-2.rds.amazonaws.com` | Step 6 | Step 12 | [ ] |
+| **ALB** | `signalbridge-alb` | `signalbridge-alb-870044483.ap-southeast-2.elb.amazonaws.com` | Step 7.2 | Step 12 | [ ] |
+| **ALB Target Group** | `signalbridge-tg` | `arn:aws:elasticloadbalancing:ap-southeast-2:982471468730:targetgroup/signalbridge-tg/6f0f6213d90bffb8` | Step 7.1 | Step 12 | [ ] |
+| **CloudFront** | `signalbridge-cdn` (`E3BUD39G9IVID6`) | `https://d1soslo0efb36p.cloudfront.net` | Step 8 | Step 12 | [ ] |
 
 ---
 
 ## 🛡️ Evidence Checklist (Local vs AWS)
 
 - [x] **Local Evidence**: Saved in [`local-evidence/`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/local-evidence/) (113 pytest results, dashboard screenshots, S3Mock archives, execution log).
-- [ ] **AWS HTTPS Entry**: Verified `https://<distribution-id>.cloudfront.net`.
-- [ ] **AWS Webhook Ingestion**: Genuine HTTP 202 response with CloudWatch timing.
-- [ ] **AWS S3 Archival**: Real object verified in AWS S3 bucket.
-- [ ] **AWS Incident Grouping**: Correlated incident in AWS React Dashboard.
-- [ ] **AWS Operator Resolution**: Incident resolved on AWS with audit event.
+- [x] **AWS HTTPS Entry**: Verified `https://d1soslo0efb36p.cloudfront.net`.
+- [x] **AWS Webhook Ingestion**: Genuine HTTP 202 responses (856ms, 540ms).
+- [x] **AWS S3 Archival**: Real object verified in S3: `archives/pagerduty/2026/10/26/e12cf5db-2091-43d6-9288-beef2dbae53f.json`.
+- [x] **AWS Incident Grouping**: Correlated incident (`62cc5175-427e-4848-80ba-50bf05d656c0`) with 2 alerts, CRITICAL severity.
+- [x] **AWS Operator Resolution**: Incident transitioned from OPEN -> ACKNOWLEDGED -> RESOLVED with root cause audit note.
 - [ ] **Comparison Report**: `local-evidence/reports/LOCAL_VS_AWS_COMPARISON_REPORT.md`.

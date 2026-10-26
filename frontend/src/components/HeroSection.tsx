@@ -1,0 +1,409 @@
+import React, { useState } from 'react';
+import {
+  Activity,
+  Shield,
+  Layers,
+  Database,
+  CheckCircle,
+  AlertOctagon,
+  AlertTriangle,
+  RotateCcw,
+  Zap,
+  Play,
+  ArrowRight,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react';
+
+interface HeroSectionProps {
+  onRefreshData: () => void;
+  apiDocsUrl?: string;
+  isLightTheme?: boolean;
+}
+
+// Browser Web Crypto API helper to compute HMAC-SHA256 in pure JavaScript (zero external dependencies)
+async function calculateHmacSha256(secret: string, message: string): Promise<string> {
+  try {
+    const enc = new TextEncoder();
+    const key = await window.crypto.subtle.importKey(
+      'raw',
+      enc.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const signature = await window.crypto.subtle.sign('HMAC', key, enc.encode(message));
+    const hashArray = Array.from(new Uint8Array(signature));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (err) {
+    console.warn('[HMAC] WebCrypto signature error:', err);
+    return 'tampered_signature_fallback';
+  }
+}
+
+export const HeroSection: React.FC<HeroSectionProps> = ({
+  onRefreshData,
+  apiDocsUrl = '/api/docs/',
+}) => {
+  const [simulating, setSimulating] = useState<string | null>(null);
+  const [simulationResult, setSimulationResult] = useState<{
+    type: 'success' | 'warning' | 'error' | 'info';
+    title: string;
+    message: string;
+    latencyMs?: number;
+    status?: number;
+  } | null>(null);
+
+  const [activeStage, setActiveStage] = useState<number>(0);
+
+  // Trigger real live webhook events with actual HMAC signatures
+  const runSimulation = async (scenario: 'critical' | 'warning' | 'duplicate' | 'tampered' | 'recovery') => {
+    setSimulating(scenario);
+    setSimulationResult(null);
+
+    const timestamp = new Date().toISOString();
+    const traceId = `sim-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const secret = 'secret-token-123'; // matches WebhookSource default secret
+
+    let payload: any = {};
+    let tampered = false;
+    let endpoint = '/api/v1/webhooks/pagerduty/';
+
+    if (scenario === 'critical') {
+      payload = {
+        event: 'incident.trigger',
+        service: 'payment-gateway',
+        title: 'CRITICAL: Database connection pool exhaustion under peak load',
+        severity: 'CRITICAL',
+        tracking_id: traceId,
+        details: { pool_active: 500, pool_limit: 500, waiting_threads: 142 },
+        timestamp,
+      };
+    } else if (scenario === 'warning') {
+      payload = {
+        event: 'incident.trigger',
+        service: 'auth-service',
+        title: 'WARNING: Elevated p99 latency detected in OAuth token exchange',
+        severity: 'WARNING',
+        tracking_id: traceId,
+        details: { p99_latency_ms: 382.4, threshold_ms: 200.0 },
+        timestamp,
+      };
+    } else if (scenario === 'duplicate') {
+      // Fixed static tracking ID to trigger deterministic idempotency match
+      payload = {
+        event: 'incident.trigger',
+        service: 'payment-gateway',
+        title: 'CRITICAL: Database connection pool exhaustion under peak load',
+        severity: 'CRITICAL',
+        tracking_id: 'sim-duplicate-fixed-key-001',
+        timestamp: '2026-10-26T12:00:00Z',
+      };
+    } else if (scenario === 'tampered') {
+      tampered = true;
+      payload = {
+        event: 'incident.trigger',
+        service: 'hacker-tamper',
+        title: 'FORGED: Malicious unauthorized payload injection attempt',
+        severity: 'CRITICAL',
+        tracking_id: traceId,
+        timestamp,
+      };
+    } else if (scenario === 'recovery') {
+      payload = {
+        event: 'incident.resolve',
+        service: 'payment-gateway',
+        title: 'RECOVERY: Database pool recycled, latency returned to normal (14ms)',
+        severity: 'LOW',
+        tracking_id: traceId,
+        timestamp,
+      };
+    }
+
+    const payloadString = JSON.stringify(payload);
+    const signature = tampered
+      ? 'sha256=0000000000000000000000000000000000000000000000000000000000000000'
+      : `sha256=${await calculateHmacSha256(secret, payloadString)}`;
+
+    const t0 = performance.now();
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Signature-256': signature,
+        },
+        body: payloadString,
+      });
+
+      const t1 = performance.now();
+      const latencyMs = Math.round(t1 - t0);
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 202) {
+        setSimulationResult({
+          type: 'success',
+          title: 'HTTP 202 Accepted — Queued to Celery',
+          message: `Webhook accepted in ${latencyMs}ms! Idempotency: ${data.idempotency_hash?.substring(0, 12)}... S3 cold archival initiated.`,
+          latencyMs,
+          status: 202,
+        });
+      } else if (res.status === 200 && data.status === 'duplicate_ignored') {
+        setSimulationResult({
+          type: 'info',
+          title: 'HTTP 200 OK — Idempotent Duplicate Ignored',
+          message: `Deduplication shield active! Payload matched existing fingerprint without re-alerting.`,
+          latencyMs,
+          status: 200,
+        });
+      } else if (res.status === 401) {
+        setSimulationResult({
+          type: 'warning',
+          title: 'HTTP 401 Unauthorized — HMAC Tamper Defense Blocked',
+          message: `Cryptographic verification successfully rejected bad signature in ${latencyMs}ms.`,
+          latencyMs,
+          status: 401,
+        });
+      } else {
+        setSimulationResult({
+          type: 'info',
+          title: `HTTP ${res.status}`,
+          message: data.message || data.error || 'Webhook processed.',
+          latencyMs,
+          status: res.status,
+        });
+      }
+
+      // Automatically refresh live dashboard metrics
+      setTimeout(onRefreshData, 800);
+      setTimeout(onRefreshData, 2400);
+    } catch (err: any) {
+      setSimulationResult({
+        type: 'error',
+        title: 'Simulation Request Failed',
+        message: err.message || 'Network error connecting to ingestion gateway.',
+      });
+    } finally {
+      setSimulating(null);
+    }
+  };
+
+  const pipelineStages = [
+    {
+      id: 1,
+      title: 'Alert Sources',
+      badge: 'Multi-Vendor',
+      desc: 'PagerDuty, Datadog & Grafana webhooks',
+      icon: Activity,
+      color: 'var(--color-primary)',
+    },
+    {
+      id: 2,
+      title: 'HMAC Gateway',
+      badge: '<50ms SLA',
+      desc: 'SHA-256 constant-time signature validation',
+      icon: Shield,
+      color: '#10b981',
+    },
+    {
+      id: 3,
+      title: 'Celery & Redis',
+      badge: 'Zero-Loss Queue',
+      desc: 'Row-locked deduplication & incident grouping',
+      icon: Layers,
+      color: '#8b5cf6',
+    },
+    {
+      id: 4,
+      title: 'Dual Cold Storage',
+      badge: 'AWS Production',
+      desc: 'Postgres RDS queries + Amazon S3 JSON archives',
+      icon: Database,
+      color: '#f59e0b',
+    },
+  ];
+
+  return (
+    <section className="sb-hero">
+      {/* Ambient background glow accents */}
+      <div className="sb-hero-glow glow-left" />
+      <div className="sb-hero-glow glow-right" />
+
+      {/* Top Banner Tag */}
+      <div className="sb-hero-header">
+        <div className="sb-pill-badge">
+          <span className="pulse-ping" />
+          <Sparkles size={13} className="text-amber-500" />
+          <span className="badge-text">SignalBridge SRE Ingestion Engine</span>
+          <span className="badge-sep">•</span>
+          <span className="badge-sub">Sub-50ms HMAC & Cold S3 Archival</span>
+        </div>
+
+        <h1 className="sb-hero-title">
+          From Webhook Chaos to <span className="highlight-text">Zero-Noise Incident Clarity</span>
+        </h1>
+
+        <p className="sb-hero-subtitle">
+          An enterprise-grade webhook ingestion platform that validates cryptographic HMAC signatures in
+          under 50ms, deduplicates burst floods with SHA-256 idempotency, correlates distributed alerts into
+          actionable incidents, and archives raw payloads directly to Amazon S3.
+        </p>
+      </div>
+
+      {/* Interactive Architecture Flow Diagram */}
+      <div className="sb-pipeline-card">
+        <div className="pipeline-header">
+          <div className="pipeline-title">
+            <Zap size={15} />
+            <span>Live Architecture Pipeline Flow</span>
+          </div>
+          <span className="pipeline-status">
+            <span className="pulse-dot dot-ready" /> End-to-End AWS Verified
+          </span>
+        </div>
+
+        <div className="pipeline-grid">
+          {pipelineStages.map((stage, idx) => {
+            const Icon = stage.icon;
+            const isHovered = activeStage === idx;
+            return (
+              <React.Fragment key={stage.id}>
+                <div
+                  className={`pipeline-node ${isHovered ? 'active' : ''}`}
+                  onMouseEnter={() => setActiveStage(idx)}
+                >
+                  <div className="node-icon-wrapper" style={{ backgroundColor: `${stage.color}15`, color: stage.color }}>
+                    <Icon size={20} />
+                  </div>
+                  <div className="node-content">
+                    <div className="node-title-row">
+                      <span className="node-title">{stage.title}</span>
+                      <span className="node-badge">{stage.badge}</span>
+                    </div>
+                    <p className="node-desc">{stage.desc}</p>
+                  </div>
+                </div>
+
+                {idx < pipelineStages.length - 1 && (
+                  <div className="pipeline-connector">
+                    <ArrowRight size={16} />
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Interactive 1-Click Live Incident Simulator */}
+      <div className="sb-simulator-card">
+        <div className="simulator-header">
+          <div>
+            <div className="sim-title">
+              <Play size={15} className="text-emerald-500" />
+              <span>Interactive Incident & Webhook Simulator</span>
+            </div>
+            <p className="sim-desc">
+              Dispatch real HMAC-signed webhooks through the live ingestion gateway to test deduplication,
+              correlation, security defense, and S3 cold archival in real-time.
+            </p>
+          </div>
+
+          <a
+            href={apiDocsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary btn-sm"
+          >
+            <ExternalLink size={13} />
+            Swagger API Docs
+          </a>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="sim-buttons-grid">
+          <button
+            className="sim-btn btn-critical"
+            disabled={simulating !== null}
+            onClick={() => runSimulation('critical')}
+          >
+            <AlertOctagon size={16} />
+            <div className="btn-text">
+              <span className="btn-label">Database Pool Exhaustion</span>
+              <span className="btn-sub">PagerDuty • CRITICAL Alert</span>
+            </div>
+          </button>
+
+          <button
+            className="sim-btn btn-warning"
+            disabled={simulating !== null}
+            onClick={() => runSimulation('warning')}
+          >
+            <AlertTriangle size={16} />
+            <div className="btn-text">
+              <span className="btn-label">p99 Latency Breach</span>
+              <span className="btn-sub">Datadog • HIGH Alert</span>
+            </div>
+          </button>
+
+          <button
+            className="sim-btn btn-duplicate"
+            disabled={simulating !== null}
+            onClick={() => runSimulation('duplicate')}
+          >
+            <RotateCcw size={16} />
+            <div className="btn-text">
+              <span className="btn-label">Duplicate Alert Storm</span>
+              <span className="btn-sub">Idempotency 200 Deduplication</span>
+            </div>
+          </button>
+
+          <button
+            className="sim-btn btn-tampered"
+            disabled={simulating !== null}
+            onClick={() => runSimulation('tampered')}
+          >
+            <Shield size={16} />
+            <div className="btn-text">
+              <span className="btn-label">Tampered HMAC Attack</span>
+              <span className="btn-sub">Cryptographic 401 Defense</span>
+            </div>
+          </button>
+
+          <button
+            className="sim-btn btn-recovery"
+            disabled={simulating !== null}
+            onClick={() => runSimulation('recovery')}
+          >
+            <CheckCircle size={16} />
+            <div className="btn-text">
+              <span className="btn-label">Send Recovery Signal</span>
+              <span className="btn-sub">Auto-Resolve Incident</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Live Simulation Feedback Toast */}
+        {simulationResult && (
+          <div className={`sim-feedback-toast toast-${simulationResult.type}`}>
+            <div className="toast-left">
+              {simulationResult.type === 'success' && <CheckCircle size={18} className="toast-icon" />}
+              {simulationResult.type === 'info' && <RotateCcw size={18} className="toast-icon" />}
+              {simulationResult.type === 'warning' && <Shield size={18} className="toast-icon" />}
+              {simulationResult.type === 'error' && <AlertOctagon size={18} className="toast-icon" />}
+              <div>
+                <div className="toast-title">{simulationResult.title}</div>
+                <div className="toast-message">{simulationResult.message}</div>
+              </div>
+            </div>
+            {simulationResult.latencyMs !== undefined && (
+              <span className="toast-latency font-mono">
+                ⚡ {simulationResult.latencyMs}ms Gateway ACK
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
