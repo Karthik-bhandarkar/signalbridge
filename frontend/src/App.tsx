@@ -19,11 +19,28 @@ export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginPreset, setLoginPreset] = useState<'viewer' | 'admin'>('viewer');
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Global counts for badges:
   const [activeIncidents, setActiveIncidents] = useState<Incident[]>([]);
+
+  const handleOpenLogin = (preset: 'viewer' | 'admin' = 'viewer') => {
+    setLoginPreset(preset);
+    setShowLoginModal(true);
+  };
+
+  const handleQuickLoginAsViewer = async () => {
+    try {
+      const res = await api.auth.login({ username: 'viewer', password: 'Viewer123!' });
+      setCurrentUser(res.user);
+      fetchGlobalIncidentCounts();
+    } catch (err) {
+      console.error('[App] Quick viewer login error:', err);
+      handleOpenLogin('viewer');
+    }
+  };
 
   const fetchCurrentUser = async () => {
     try {
@@ -80,7 +97,7 @@ export const App: React.FC = () => {
       <div className="main-content">
         <Navbar
           currentUser={currentUser}
-          onOpenLogin={() => setShowLoginModal(true)}
+          onOpenLogin={() => handleOpenLogin('viewer')}
           onLogout={handleLogout}
           activeIncidentsCount={activeIncidents.length}
           criticalCount={criticalCount}
@@ -92,6 +109,9 @@ export const App: React.FC = () => {
             <OverviewView
               onNavigateTab={setCurrentTab}
               onOpenIncidentDetail={setSelectedIncidentId}
+              currentUser={currentUser}
+              onOpenLogin={handleOpenLogin}
+              onQuickLoginAsViewer={handleQuickLoginAsViewer}
             />
           )}
 
@@ -123,6 +143,7 @@ export const App: React.FC = () => {
       {/* Operator Login Modal */}
       {showLoginModal && (
         <LoginModal
+          initialRole={loginPreset}
           onClose={() => setShowLoginModal(false)}
           onSuccess={(user) => {
             setCurrentUser(user);

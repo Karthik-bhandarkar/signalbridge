@@ -5,18 +5,24 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { api } from '../lib/api';
-import type { Incident, IngestionSummary, Service, WebhookSource } from '../types';
+import type { AuthUser, Incident, IngestionSummary, Service, WebhookSource } from '../types';
 import { HeroSection } from '../components/HeroSection';
 import { SreBentoGrid } from '../components/SreBentoGrid';
 
 interface OverviewViewProps {
   onNavigateTab: (tab: any) => void;
   onOpenIncidentDetail: (id: string) => void;
+  currentUser?: AuthUser | null;
+  onOpenLogin?: (preset?: 'viewer' | 'admin') => void;
+  onQuickLoginAsViewer?: () => void;
 }
 
 export const OverviewView: React.FC<OverviewViewProps> = ({
   onNavigateTab,
   onOpenIncidentDetail,
+  currentUser,
+  onOpenLogin,
+  onQuickLoginAsViewer,
 }) => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -54,7 +60,12 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   return (
     <div className="overview-page-wrapper">
       {/* 1. Gumloop-inspired Hero Section with Live Architecture & 1-Click Simulator */}
-      <HeroSection onRefreshData={loadData} />
+      <HeroSection
+        onRefreshData={loadData}
+        currentUser={currentUser}
+        onOpenLogin={onOpenLogin}
+        onQuickLoginAsViewer={onQuickLoginAsViewer}
+      />
 
       {/* 2. 21st.dev Finance Bento-inspired SRE Telemetry HUD */}
       <SreBentoGrid

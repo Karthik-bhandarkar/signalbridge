@@ -1296,3 +1296,160 @@ table.data-table tr:hover td {
   }
 }
 
+/* =============================================================================
+   13. HERO ACTION & DEMONSTRATION ACCESS PORTAL (VEXEL BLUE)
+   ============================================================================= */
+
+.sb-hero-actions-container {
+  width: 100%;
+  max-width: 860px;
+  margin: 28px auto 0;
+}
+
+.sb-logged-in-badge-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 12px 18px;
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.08);
+}
+
+.sb-access-portal-card {
+  background: linear-gradient(145deg, rgba(0, 131, 255, 0.08) 0%, var(--bg-surface) 60%);
+  border: 1px solid rgba(0, 131, 255, 0.3);
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow: 0 10px 30px -10px rgba(0, 131, 255, 0.2);
+  text-align: left;
+}
+
+.sb-access-portal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sb-roles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .sb-roles-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sb-role-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sb-role-card:hover {
+  transform: translateY(-2px);
+}
+
+.role-viewer {
+  border-color: rgba(0, 131, 255, 0.3);
+}
+
+.role-viewer:hover {
+  border-color: #0083ff;
+  box-shadow: 0 8px 24px -6px rgba(0, 131, 255, 0.3);
+}
+
+.role-admin {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.role-admin:hover {
+  border-color: #6366f1;
+  box-shadow: 0 8px 24px -6px rgba(99, 102, 241, 0.3);
+}
+
+.role-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.role-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.role-card-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.role-card-scope {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.role-card-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.role-creds-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.role-action-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.btn-viewer-action {
+  background-color: #0083ff !important;
+  border-color: #0083ff !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(0, 131, 255, 0.35);
+}
+
+.btn-viewer-action:hover {
+  background-color: #0064d3 !important;
+}
+

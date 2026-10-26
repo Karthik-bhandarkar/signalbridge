@@ -13,12 +13,18 @@ import {
   ArrowRight,
   Sparkles,
   ExternalLink,
+  Eye,
+  Lock,
 } from 'lucide-react';
+import type { AuthUser } from '../types';
 
 interface HeroSectionProps {
   onRefreshData: () => void;
   apiDocsUrl?: string;
   isLightTheme?: boolean;
+  currentUser?: AuthUser | null;
+  onOpenLogin?: (preset?: 'viewer' | 'admin') => void;
+  onQuickLoginAsViewer?: () => void;
 }
 
 // Browser Web Crypto API helper to compute HMAC-SHA256 in pure JavaScript (zero external dependencies)
@@ -44,6 +50,9 @@ async function calculateHmacSha256(secret: string, message: string): Promise<str
 export const HeroSection: React.FC<HeroSectionProps> = ({
   onRefreshData,
   apiDocsUrl = '/api/docs/',
+  currentUser,
+  onOpenLogin,
+  onQuickLoginAsViewer,
 }) => {
   const [simulating, setSimulating] = useState<string | null>(null);
   const [simulationResult, setSimulationResult] = useState<{
@@ -248,6 +257,112 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           under 50ms, deduplicates burst floods with SHA-256 idempotency, correlates distributed alerts into
           actionable incidents, and archives raw payloads directly to Amazon S3.
         </p>
+
+        {/* Action & Fast Access Portal (Viewer vs Admin) */}
+        <div className="sb-hero-actions-container">
+          {currentUser ? (
+            <div className="sb-logged-in-badge-card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="pulse-dot dot-ready" />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Active Session: <strong style={{ color: 'var(--color-primary)' }}>{currentUser.username}</strong>
+                  {' '}• {currentUser.is_staff ? 'Lead Administrator (Full Operations)' : 'Demo Viewer (Safe Exploration)'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenLogin?.(currentUser.is_staff ? 'viewer' : 'admin')}
+                className="btn btn-secondary btn-sm"
+              >
+                Switch Account
+              </button>
+            </div>
+          ) : (
+            <div className="sb-access-portal-card">
+              <div className="sb-access-portal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={16} className="text-amber-500" />
+                  <span style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
+                    Instant Demonstration Access — Choose Your Exploration Role
+                  </span>
+                </div>
+                <span className="pill-tag font-mono" style={{ background: 'rgba(0, 131, 255, 0.15)', color: '#0083ff' }}>
+                  Default Credentials Pre-configured
+                </span>
+              </div>
+
+              <div className="sb-roles-grid">
+                {/* 1. Demo Viewer Role */}
+                <div className="sb-role-card role-viewer">
+                  <div className="role-card-top">
+                    <div className="role-icon-box" style={{ background: 'rgba(0, 131, 255, 0.15)', color: '#0083ff' }}>
+                      <Eye size={18} />
+                    </div>
+                    <div>
+                      <div className="role-card-title">Demo Viewer Account</div>
+                      <span className="role-card-scope">Safe Exploration • Read-Only</span>
+                    </div>
+                  </div>
+
+                  <p className="role-card-desc">
+                    Inspect correlated incidents, view real-time alert streams, examine Amazon S3 cold JSON archives, and test simulated events without administrative setup.
+                  </p>
+
+                  <div className="role-creds-box font-mono">
+                    <span>User: <strong>viewer</strong></span>
+                    <span>Pass: <strong>Viewer123!</strong></span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onQuickLoginAsViewer) {
+                        onQuickLoginAsViewer();
+                      } else if (onOpenLogin) {
+                        onOpenLogin('viewer');
+                      }
+                    }}
+                    className="btn btn-primary btn-sm role-action-btn btn-viewer-action"
+                  >
+                    <Eye size={14} />
+                    <span>Explore as Viewer (1-Click)</span>
+                  </button>
+                </div>
+
+                {/* 2. Lead Admin Role */}
+                <div className="sb-role-card role-admin">
+                  <div className="role-card-top">
+                    <div className="role-icon-box" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1' }}>
+                      <Shield size={18} />
+                    </div>
+                    <div>
+                      <div className="role-card-title">Lead Administrator</div>
+                      <span className="role-card-scope">Full Control • SRE Operations</span>
+                    </div>
+                  </div>
+
+                  <p className="role-card-desc">
+                    Full SRE management: register webhook sources, rotate cryptographic HMAC secrets, trigger incident state transitions (ACK/Resolve), and manage monitors.
+                  </p>
+
+                  <div className="role-creds-box font-mono">
+                    <span>User: <strong>admin</strong></span>
+                    <span>Pass: <strong>Admin123!</strong></span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onOpenLogin?.('admin')}
+                    className="btn btn-secondary btn-sm role-action-btn"
+                  >
+                    <Lock size={14} />
+                    <span>Sign In as Admin</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Interactive Architecture Flow Diagram */}
