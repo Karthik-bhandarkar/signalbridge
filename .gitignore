@@ -2,11 +2,14 @@
 # SignalBridge — Git Ignore Configuration
 # =============================================================================
 
-# Internal Engineering Blueprints, Learning Journals & Specifications
-/docs/
+# Internal Engineering Learning Journals & Personal Step Validations
+/docs/learning_journal/
+/docs/step_validations/
 /snapshot/
 /scratch/
+local-evidence/
 AGENTS.md
+SIGNALBRIDGE_ANTIGRAVITY_MASTER_IMPLEMENTATION_PROMPT.md
 prompt.md
 verify_all.py
 
@@ -66,14 +69,23 @@ htmlcov/
 staticfiles/
 media/
 
-# Database Local Files
+# Database Local Files & Backups
 *.sqlite3
 *.db
 *.dump
+backups/
+
+# Frontend Bundles & Dependencies
+node_modules/
+**/node_modules/
+frontend/dist/
+dist/
 
 # Celery Beat
-celerybeat-schedule
+celerybeat-schedule*
+**/celerybeat-schedule*
 celerybeat.pid
+**/celerybeat.pid
 
 # OS & IDE Metadata
 .DS_Store

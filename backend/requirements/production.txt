@@ -1,0 +1,5 @@
+# Base Dependencies
+-r base.txt
+
+# Production HTTP / WSGI Server
+gunicorn>=22.0.0

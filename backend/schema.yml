@@ -1,0 +1,2569 @@
+openapi: 3.0.3
+info:
+  title: SignalBridge Webhook Ingestion Engine API
+  version: 1.0.0
+  description: Enterprise High-Throughput Webhook Ingestion & Incident Correlation
+    Engine
+paths:
+  /api/v1/alerts/:
+    get:
+      operationId: api_v1_alerts_list
+      description: Lists alerts with pagination and filtering by service, severity,
+        incident_id, and search query.
+      summary: List Alerts
+      parameters:
+      - in: query
+        name: incident_id
+        schema:
+          type: string
+        description: Filter by parent incident UUID
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: Results per page (max 100)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search title or external_id
+      - in: query
+        name: service
+        schema:
+          type: string
+        description: Filter by service name
+      - in: query
+        name: severity
+        schema:
+          type: string
+        description: Filter by severity (CRITICAL, HIGH, etc)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertSummary'
+          description: ''
+  /api/v1/alerts/{id}/:
+    get:
+      operationId: api_v1_alerts_retrieve
+      description: Retrieve full details for an individual Alert record.
+      summary: Retrieve Alert Detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertDetail'
+          description: ''
+        '404':
+          description: Alert not found
+  /api/v1/alerts/{id}/retry/:
+    post:
+      operationId: api_v1_alerts_retry_create
+      description: Manually retries processing for an alert by re-enqueueing its raw
+        IngestedPayload into Celery.
+      summary: Retry Alert Ingestion
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '202':
+          description: Payload re-enqueued for asynchronous processing.
+        '400':
+          description: Alert does not have an associated payload record.
+        '404':
+          description: Alert not found
+  /api/v1/analytics/metrics/:
+    get:
+      operationId: api_v1_analytics_metrics_list
+      description: Operator API returning granular, time-bucketed IngestionMetric
+        records.
+      summary: List Ingestion Metrics Time Series
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: ISO-8601 start timestamp for window filter
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Max number of time buckets to return (default 60, max 500)
+      - in: query
+        name: source
+        schema:
+          type: string
+        description: Filter by webhook source slug (e.g. 'pagerduty')
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: ISO-8601 end timestamp for window filter
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IngestionMetric'
+          description: ''
+  /api/v1/analytics/summary/:
+    get:
+      operationId: api_v1_analytics_summary_retrieve
+      description: Operator API returning high-level aggregated SLA and throughput
+        metrics.
+      summary: Get Ingestion Performance Summary
+      parameters:
+      - in: query
+        name: source
+        schema:
+          type: string
+        description: Optional webhook source slug filter
+      - in: query
+        name: window_minutes
+        schema:
+          type: integer
+        description: Rolling time window in minutes (default 60)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionSummary'
+          description: ''
+  /api/v1/audit/:
+    get:
+      operationId: api_v1_audit_list
+      description: Global chronological timeline of all IncidentEvents across the
+        entire system.
+      summary: List Audit Log Events
+      parameters:
+      - in: query
+        name: actor
+        schema:
+          type: string
+        description: Filter by actor
+      - in: query
+        name: event_type
+        schema:
+          type: string
+        description: Filter by event type
+      - in: query
+        name: incident_id
+        schema:
+          type: string
+        description: Filter by incident UUID
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: Results per page
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncidentEvent'
+          description: ''
+  /api/v1/auth/csrf/:
+    get:
+      operationId: api_v1_auth_csrf_retrieve
+      description: Ensures a CSRF cookie is set in the client's browser and returns
+        the token in JSON.
+      summary: Obtain CSRF Token
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: CSRF token set in cookie and returned in body.
+  /api/v1/auth/login/:
+    post:
+      operationId: api_v1_auth_login_create
+      description: Authenticates operator username & password, starting an HTTP session.
+      summary: Operator Session Login
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: Login successful; session cookie established.
+        '400':
+          description: Invalid request format.
+        '401':
+          description: Invalid username or password.
+  /api/v1/auth/logout/:
+    post:
+      operationId: api_v1_auth_logout_create
+      description: Logs out the current operator and invalidates the session.
+      summary: Operator Session Logout
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: Session cleared.
+  /api/v1/auth/me/:
+    get:
+      operationId: api_v1_auth_me_retrieve
+      description: Returns current operator authentication status and user details
+        including RBAC role.
+      summary: Get Current Operator Profile
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: Profile details or unauthenticated status.
+  /api/v1/auth/users/:
+    get:
+      operationId: api_v1_auth_users_list
+      description: |-
+        Lists all operator users with their assigned RBAC roles.
+        Requires Admin or Superuser privileges.
+      summary: List Operator Users and Roles
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/auth/users/{user_id}/role/:
+    patch:
+      operationId: api_v1_auth_users_role_partial_update
+      description: |-
+        Updates the RBAC role for a specific user.
+        Requires Admin or Superuser privileges.
+        Prevents self-modification and modifying superusers.
+      summary: Update Operator RBAC Role
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRoleUpdate'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Role updated.
+  /api/v1/incidents/:
+    get:
+      operationId: api_v1_incidents_list
+      description: |-
+        List and filter Incidents with pagination.
+        Supports filtering by status, severity, service_name, search query, and sorting.
+      summary: List Incidents
+      parameters:
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: Sort order (e.g. -last_seen_at, -alert_count)
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Page number
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: Results per page (max 100)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search service name, fingerprint, or notes
+      - in: query
+        name: service
+        schema:
+          type: string
+        description: Filter by service name
+      - in: query
+        name: severity
+        schema:
+          type: string
+        description: Filter by severity (CRITICAL, HIGH, MEDIUM, LOW)
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Filter by status (OPEN, ACKNOWLEDGED, RESOLVED)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncidentList'
+          description: ''
+  /api/v1/incidents/{id}/:
+    get:
+      operationId: api_v1_incidents_retrieve
+      description: Retrieve full details for an individual Incident, including correlated
+        alerts and timeline events.
+      summary: Retrieve Incident Detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+          description: ''
+        '404':
+          description: Incident not found
+  /api/v1/incidents/{id}/acknowledge/:
+    post:
+      operationId: api_v1_incidents_acknowledge_create
+      description: Transitions an OPEN incident to ACKNOWLEDGED, indicating an operator
+        is investigating.
+      summary: Acknowledge Incident
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentAcknowledge'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+          description: ''
+        '400':
+          description: Invalid transition
+  /api/v1/incidents/{id}/assign/:
+    post:
+      operationId: api_v1_incidents_assign_create
+      description: Assigns an incident to an operator or on-call engineer.
+      summary: Assign Incident
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentAssign'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+          description: ''
+  /api/v1/incidents/{id}/notes/:
+    post:
+      operationId: api_v1_incidents_notes_create
+      description: Appends an operator investigation note to the incident timeline.
+      summary: Add Note to Incident
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentAddNote'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentEvent'
+          description: ''
+  /api/v1/incidents/{id}/reopen/:
+    post:
+      operationId: api_v1_incidents_reopen_create
+      description: Manually reopens a previously resolved incident with justification.
+      summary: Reopen Incident
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentReopen'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+          description: ''
+  /api/v1/incidents/{id}/resolve/:
+    post:
+      operationId: api_v1_incidents_resolve_create
+      description: Resolves an active incident with required root cause resolution
+        notes.
+      summary: Resolve Incident
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentResolve'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentDetail'
+          description: ''
+  /api/v1/integrations/:
+    get:
+      operationId: api_v1_integrations_list
+      description: Operator API to list and register webhook source integrations.
+      summary: List Webhook Integrations
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WebhookSource'
+          description: ''
+    post:
+      operationId: api_v1_integrations_create
+      description: Operator API to list and register webhook source integrations.
+      summary: Create Webhook Integration
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookSourceCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSource'
+          description: ''
+  /api/v1/integrations/{id}/:
+    get:
+      operationId: api_v1_integrations_retrieve
+      description: Operator API to retrieve, modify, or delete a webhook integration.
+      summary: Retrieve Webhook Integration Details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSource'
+          description: ''
+        '404':
+          description: Integration not found
+    patch:
+      operationId: api_v1_integrations_partial_update
+      description: Operator API to retrieve, modify, or delete a webhook integration.
+      summary: Update Webhook Integration
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWebhookSource'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookSource'
+          description: ''
+        '404':
+          description: Integration not found
+    delete:
+      operationId: api_v1_integrations_destroy
+      description: Operator API to retrieve, modify, or delete a webhook integration.
+      summary: Delete Webhook Integration
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Integration not found
+  /api/v1/integrations/{id}/regenerate-secret/:
+    post:
+      operationId: api_v1_integrations_regenerate_secret_create
+      description: Rotates the cryptographic HMAC secret key for an integration.
+      summary: Regenerate Integration Secret
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Secret key regenerated successfully.
+  /api/v1/monitors/:
+    get:
+      operationId: api_v1_monitors_list
+      summary: List Synthetic Monitors
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Monitor'
+          description: ''
+    post:
+      operationId: api_v1_monitors_create
+      summary: Create Synthetic Monitor
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Monitor'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+          description: ''
+  /api/v1/monitors/{id}/:
+    get:
+      operationId: api_v1_monitors_retrieve
+      summary: Retrieve Synthetic Monitor Details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+          description: ''
+        '404':
+          description: Monitor not found
+    patch:
+      operationId: api_v1_monitors_partial_update
+      summary: Update Synthetic Monitor
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMonitor'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Monitor'
+          description: ''
+        '404':
+          description: Monitor not found
+    delete:
+      operationId: api_v1_monitors_destroy
+      summary: Delete Synthetic Monitor
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Monitor not found
+  /api/v1/monitors/{id}/test/:
+    post:
+      operationId: api_v1_monitors_test_create
+      description: Triggers an immediate on-demand probe for this monitor.
+      summary: Execute Immediate Monitor Probe
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Probe execution summary
+  /api/v1/notifications/deliveries/:
+    get:
+      operationId: api_v1_notifications_deliveries_list
+      summary: List Notification Deliveries
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationDelivery'
+          description: ''
+  /api/v1/notifications/destinations/:
+    get:
+      operationId: api_v1_notifications_destinations_list
+      summary: List Notification Destinations
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationDestination'
+          description: ''
+    post:
+      operationId: api_v1_notifications_destinations_create
+      summary: Create Notification Destination
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationDestination'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDestination'
+          description: ''
+  /api/v1/notifications/destinations/{id}/:
+    get:
+      operationId: api_v1_notifications_destinations_retrieve
+      summary: Retrieve Notification Destination
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDestination'
+          description: ''
+        '404':
+          description: Destination not found
+    patch:
+      operationId: api_v1_notifications_destinations_partial_update
+      summary: Update Notification Destination
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationDestination'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDestination'
+          description: ''
+        '404':
+          description: Destination not found
+    delete:
+      operationId: api_v1_notifications_destinations_destroy
+      summary: Delete Notification Destination
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Destination not found
+  /api/v1/notifications/destinations/{id}/test-dispatch/:
+    post:
+      operationId: api_v1_notifications_destinations_test_dispatch_create
+      description: |-
+        Triggers a synthetic test notification dispatch to verify endpoint reachability.
+        Requires Admin or Superuser privileges.
+      summary: Test Notification Destination Dispatch
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Test notification dispatched.
+  /api/v1/services/:
+    get:
+      operationId: api_v1_services_list
+      summary: List Monitored Services
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+          description: ''
+    post:
+      operationId: api_v1_services_create
+      summary: Register New Monitored Service
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Service'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+          description: ''
+  /api/v1/services/{id}/:
+    get:
+      operationId: api_v1_services_retrieve
+      summary: Retrieve Service Details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+          description: ''
+        '404':
+          description: Service not found
+    patch:
+      operationId: api_v1_services_partial_update
+      summary: Update Service
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedService'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+          description: ''
+        '404':
+          description: Service not found
+    delete:
+      operationId: api_v1_services_destroy
+      summary: Delete Service
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Service not found
+  /api/v1/webhooks/{source_slug}/:
+    post:
+      operationId: api_v1_webhooks_create
+      description: Receives a raw webhook payload from a registered third-party alert
+        producer. Enforces HMAC-SHA256 cryptographic signature authentication, validates
+        the envelope, executes distributed rate limiting, persists a durable IngestedPayload
+        record with database unique constraint protection against duplicates, and
+        returns an HTTP 202 Accepted ACK in < 100ms. Duplicate requests receive an
+        immediate HTTP 200 OK without re-ingestion.
+      summary: Ingest incoming webhook alert with HMAC verification & Durable Idempotency
+      parameters:
+      - in: path
+        name: source_slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookIngestion'
+        required: true
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookIngestionResponse'
+          description: Webhook successfully authenticated, accepted, and queued for
+            processing.
+        '200':
+          description: Idempotent duplicate detected. Webhook previously accepted.
+        '400':
+          description: Malformed or empty JSON payload envelope.
+        '401':
+          description: Missing, tampered, or mismatched HMAC signature.
+        '403':
+          description: Webhook source is deactivated or disabled.
+        '404':
+          description: Webhook source slug is not registered.
+        '429':
+          description: Source burst rate limit exceeded. Retry after specified delay.
+  /health/live/:
+    get:
+      operationId: health_live_retrieve
+      description: Lightweight probe verifying the application process is alive and
+        accepting connections.
+      summary: Kubernetes Liveness Probe
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: Process is alive.
+  /health/ready/:
+    get:
+      operationId: health_ready_retrieve
+      description: Verifies database and cache connectivity. Returns 200 if ready,
+        503 if any dependent dependency is down.
+      summary: Kubernetes Readiness Probe
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          description: All dependencies healthy and ready for traffic.
+        '503':
+          description: One or more critical dependencies failed health check.
+components:
+  schemas:
+    AlertDetail:
+      type: object
+      description: Full detail serializer for an individual Alert including payload
+        and raw metadata.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        incident:
+          type: string
+          format: uuid
+          description: The active incident this alert was grouped into.
+          readOnly: true
+          nullable: true
+        service_name:
+          type: string
+          readOnly: true
+          description: Microservice or host that originated the alert signal.
+        fingerprint:
+          type: string
+          readOnly: true
+          description: Correlation key used to group this alert with similar active
+            incidents.
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/AlertSeverityEnum'
+          readOnly: true
+          description: |-
+            Severity tier of this individual alert.
+
+            * `CRITICAL` - P1 - Critical
+            * `HIGH` - P2 - High
+            * `MEDIUM` - P3 - Medium
+            * `LOW` - P4 - Low
+        title:
+          type: string
+          readOnly: true
+          description: Brief summary of the incident or alarm condition.
+        description:
+          type: string
+          readOnly: true
+          description: Extended alert details, error message, or stack summary.
+        external_id:
+          type: string
+          readOnly: true
+          description: Stable vendor-supplied unique alert/event ID.
+        deduplication_hash:
+          type: string
+          readOnly: true
+          description: Unique SHA-256 hash identifying duplicate alert submissions.
+        content_hash:
+          type: string
+          readOnly: true
+          description: SHA-256 digest of canonical alert payload content.
+        raw_metadata:
+          readOnly: true
+          description: Unstructured vendor-specific attributes (tags, region, metric
+            values).
+        source_slug:
+          type: string
+          readOnly: true
+          default: ''
+        source_name:
+          type: string
+          readOnly: true
+          default: ''
+        tracking_id:
+          type: string
+          readOnly: true
+        archive_status:
+          type: string
+          readOnly: true
+          default: ''
+        s3_payload_key:
+          type: string
+          readOnly: true
+          default: ''
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+      required:
+      - archive_status
+      - content_hash
+      - created_at
+      - deduplication_hash
+      - description
+      - external_id
+      - fingerprint
+      - id
+      - incident
+      - raw_metadata
+      - s3_payload_key
+      - service_name
+      - severity
+      - source_name
+      - source_slug
+      - title
+      - tracking_id
+      - updated_at
+    AlertSeverityEnum:
+      enum:
+      - CRITICAL
+      - HIGH
+      - MEDIUM
+      - LOW
+      type: string
+      description: |-
+        * `CRITICAL` - P1 - Critical
+        * `HIGH` - P2 - High
+        * `MEDIUM` - P3 - Medium
+        * `LOW` - P4 - Low
+    AlertSummary:
+      type: object
+      description: Compact serializer for alerts embedded inside incident details
+        or alert lists.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        service_name:
+          type: string
+          readOnly: true
+          description: Microservice or host that originated the alert signal.
+        fingerprint:
+          type: string
+          readOnly: true
+          description: Correlation key used to group this alert with similar active
+            incidents.
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/AlertSeverityEnum'
+          readOnly: true
+          description: |-
+            Severity tier of this individual alert.
+
+            * `CRITICAL` - P1 - Critical
+            * `HIGH` - P2 - High
+            * `MEDIUM` - P3 - Medium
+            * `LOW` - P4 - Low
+        title:
+          type: string
+          readOnly: true
+          description: Brief summary of the incident or alarm condition.
+        external_id:
+          type: string
+          readOnly: true
+          description: Stable vendor-supplied unique alert/event ID.
+        deduplication_hash:
+          type: string
+          readOnly: true
+          description: Unique SHA-256 hash identifying duplicate alert submissions.
+        content_hash:
+          type: string
+          readOnly: true
+          description: SHA-256 digest of canonical alert payload content.
+        source_slug:
+          type: string
+          readOnly: true
+          default: ''
+        source_name:
+          type: string
+          readOnly: true
+          default: ''
+        tracking_id:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+      required:
+      - content_hash
+      - created_at
+      - deduplication_hash
+      - external_id
+      - fingerprint
+      - id
+      - service_name
+      - severity
+      - source_name
+      - source_slug
+      - title
+      - tracking_id
+    DeliveryStatusEnum:
+      enum:
+      - DELIVERED
+      - FAILED
+      type: string
+      description: |-
+        * `DELIVERED` - Delivered Successfully
+        * `FAILED` - Delivery Failed
+    DestinationTypeEnum:
+      enum:
+      - WEBHOOK
+      - SLACK
+      - PAGERDUTY
+      - CONSOLE
+      type: string
+      description: |-
+        * `WEBHOOK` - Generic Outbound Webhook (HTTP POST)
+        * `SLACK` - Slack Incoming Webhook
+        * `PAGERDUTY` - PagerDuty Events API v2
+        * `CONSOLE` - Local Console / Mock Delivery
+    EventTypeEnum:
+      enum:
+      - CREATED
+      - ALERT_ATTACHED
+      - SEVERITY_ESCALATED
+      - ACKNOWLEDGED
+      - ASSIGNED
+      - RESOLVED
+      - REOPENED
+      - NOTE_ADDED
+      type: string
+      description: |-
+        * `CREATED` - Incident Created
+        * `ALERT_ATTACHED` - Correlated Alert Attached
+        * `SEVERITY_ESCALATED` - Severity Level Escalated
+        * `ACKNOWLEDGED` - Incident Acknowledged
+        * `ASSIGNED` - Incident Assigned
+        * `RESOLVED` - Incident Resolved
+        * `REOPENED` - Incident Reopened
+        * `NOTE_ADDED` - Investigation Note Added
+    IncidentAcknowledge:
+      type: object
+      description: Payload for acknowledging an active incident.
+      properties:
+        actor:
+          type: string
+          default: operator
+        note:
+          type: string
+          default: ''
+    IncidentAddNote:
+      type: object
+      description: Payload for appending an investigation note to the incident timeline.
+      properties:
+        note:
+          type: string
+        actor:
+          type: string
+          default: operator
+      required:
+      - note
+    IncidentAssign:
+      type: object
+      description: Payload for assigning an incident to an operator or team.
+      properties:
+        assigned_to:
+          type: string
+        actor:
+          type: string
+          default: operator
+        note:
+          type: string
+          default: ''
+      required:
+      - assigned_to
+    IncidentDetail:
+      type: object
+      description: Detailed incident serializer with correlated alerts and chronological
+        timeline events.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        service_name:
+          type: string
+          readOnly: true
+          description: Name of the affected service or subsystem.
+        fingerprint:
+          type: string
+          readOnly: true
+          description: Normalized grouping fingerprint used to correlate alerts.
+        status:
+          allOf:
+          - $ref: '#/components/schemas/IncidentStatusEnum'
+          readOnly: true
+          description: |-
+            Current operational state of this incident.
+
+            * `OPEN` - Active & Unresolved
+            * `ACKNOWLEDGED` - Investigating / In Progress
+            * `RESOLVED` - Issue Resolved
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/IncidentSeverityEnum'
+          readOnly: true
+          description: |-
+            Highest severity level observed across all grouped alerts.
+
+            * `CRITICAL` - P1 - Critical Outage
+            * `HIGH` - P2 - Major Degradation
+            * `MEDIUM` - P3 - Moderate Impact
+            * `LOW` - P4 - Informational / Low
+        alert_count:
+          type: integer
+          readOnly: true
+          description: Total number of alerts correlated into this incident.
+        assigned_to:
+          type: string
+          readOnly: true
+          description: Operator or engineer currently assigned to investigate this
+            incident.
+        resolution_notes:
+          type: string
+          readOnly: true
+          description: Summary of root cause analysis and resolution actions taken.
+        first_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when the first alert triggered this incident.
+        last_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when the most recent alert was attached.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertSummary'
+          readOnly: true
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncidentEvent'
+          readOnly: true
+      required:
+      - alert_count
+      - alerts
+      - assigned_to
+      - created_at
+      - events
+      - fingerprint
+      - first_seen_at
+      - id
+      - last_seen_at
+      - resolution_notes
+      - service_name
+      - severity
+      - status
+      - updated_at
+    IncidentEvent:
+      type: object
+      description: Serializer for immutable incident timeline audit events.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        event_type:
+          allOf:
+          - $ref: '#/components/schemas/EventTypeEnum'
+          readOnly: true
+          description: |-
+            Category of lifecycle action taken on this incident.
+
+            * `CREATED` - Incident Created
+            * `ALERT_ATTACHED` - Correlated Alert Attached
+            * `SEVERITY_ESCALATED` - Severity Level Escalated
+            * `ACKNOWLEDGED` - Incident Acknowledged
+            * `ASSIGNED` - Incident Assigned
+            * `RESOLVED` - Incident Resolved
+            * `REOPENED` - Incident Reopened
+            * `NOTE_ADDED` - Investigation Note Added
+        description:
+          type: string
+          readOnly: true
+          description: Human-readable description of what transpired during this event.
+        actor:
+          type: string
+          readOnly: true
+          description: Entity that triggered this action ('system' or operator username).
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+      required:
+      - actor
+      - created_at
+      - description
+      - event_type
+      - id
+    IncidentList:
+      type: object
+      description: High-throughput list serializer for operator incident tables.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        service_name:
+          type: string
+          readOnly: true
+          description: Name of the affected service or subsystem.
+        fingerprint:
+          type: string
+          readOnly: true
+          description: Normalized grouping fingerprint used to correlate alerts.
+        status:
+          allOf:
+          - $ref: '#/components/schemas/IncidentStatusEnum'
+          readOnly: true
+          description: |-
+            Current operational state of this incident.
+
+            * `OPEN` - Active & Unresolved
+            * `ACKNOWLEDGED` - Investigating / In Progress
+            * `RESOLVED` - Issue Resolved
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/IncidentSeverityEnum'
+          readOnly: true
+          description: |-
+            Highest severity level observed across all grouped alerts.
+
+            * `CRITICAL` - P1 - Critical Outage
+            * `HIGH` - P2 - Major Degradation
+            * `MEDIUM` - P3 - Moderate Impact
+            * `LOW` - P4 - Informational / Low
+        alert_count:
+          type: integer
+          readOnly: true
+          description: Total number of alerts correlated into this incident.
+        assigned_to:
+          type: string
+          readOnly: true
+          description: Operator or engineer currently assigned to investigate this
+            incident.
+        first_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when the first alert triggered this incident.
+        last_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when the most recent alert was attached.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+        duration_seconds:
+          type: number
+          format: double
+          readOnly: true
+      required:
+      - alert_count
+      - assigned_to
+      - created_at
+      - duration_seconds
+      - fingerprint
+      - first_seen_at
+      - id
+      - last_seen_at
+      - service_name
+      - severity
+      - status
+      - updated_at
+    IncidentReopen:
+      type: object
+      description: Payload for manually reopening an incident.
+      properties:
+        reason:
+          type: string
+        actor:
+          type: string
+          default: operator
+      required:
+      - reason
+    IncidentResolve:
+      type: object
+      description: Payload for resolving an incident with root cause documentation.
+      properties:
+        resolution_notes:
+          type: string
+        actor:
+          type: string
+          default: operator
+      required:
+      - resolution_notes
+    IncidentSeverityEnum:
+      enum:
+      - CRITICAL
+      - HIGH
+      - MEDIUM
+      - LOW
+      type: string
+      description: |-
+        * `CRITICAL` - P1 - Critical Outage
+        * `HIGH` - P2 - Major Degradation
+        * `MEDIUM` - P3 - Moderate Impact
+        * `LOW` - P4 - Informational / Low
+    IncidentStatusEnum:
+      enum:
+      - OPEN
+      - ACKNOWLEDGED
+      - RESOLVED
+      type: string
+      description: |-
+        * `OPEN` - Active & Unresolved
+        * `ACKNOWLEDGED` - Investigating / In Progress
+        * `RESOLVED` - Issue Resolved
+    IngestionMetric:
+      type: object
+      description: Serializes a single time-bucketed IngestionMetric record.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        source_slug:
+          type: string
+          readOnly: true
+          description: The webhook source identifier being measured.
+        window_start:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Start timestamp (UTC) of this minute aggregation window.
+        total_received:
+          type: integer
+          readOnly: true
+          description: Total number of HTTP requests received in this window.
+        total_accepted:
+          type: integer
+          readOnly: true
+          description: Total number of valid requests queued (HTTP 202).
+        total_duplicates:
+          type: integer
+          readOnly: true
+          description: Total duplicate requests recognized via idempotency (HTTP 200).
+        total_rejected:
+          type: integer
+          readOnly: true
+          description: Total number of requests rejected across all rejection categories.
+        rejected_auth:
+          type: integer
+          readOnly: true
+          description: Total signature or credential verification failures (HTTP 401).
+        rejected_rate_limit:
+          type: integer
+          readOnly: true
+          description: Total requests rejected due to rate limiting (HTTP 429).
+        rejected_malformed:
+          type: integer
+          readOnly: true
+          description: Total malformed payloads or missing required fields/envelope
+            (HTTP 400).
+        rejected_inactive:
+          type: integer
+          readOnly: true
+          description: Total requests rejected because integration source is deactivated
+            (HTTP 403).
+        rejected_server_error:
+          type: integer
+          readOnly: true
+          description: Total server internal errors during ingestion (HTTP 500).
+        p50_latency_ms:
+          type: number
+          format: double
+          readOnly: true
+          description: 50th percentile (median) HTTP response latency in milliseconds.
+        p95_latency_ms:
+          type: number
+          format: double
+          readOnly: true
+          description: 95th percentile HTTP response latency in milliseconds.
+        p99_latency_ms:
+          type: number
+          format: double
+          readOnly: true
+          description: 99th percentile HTTP response latency in milliseconds.
+        max_latency_ms:
+          type: number
+          format: double
+          readOnly: true
+          description: Maximum HTTP response latency observed in milliseconds.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+      required:
+      - created_at
+      - id
+      - max_latency_ms
+      - p50_latency_ms
+      - p95_latency_ms
+      - p99_latency_ms
+      - rejected_auth
+      - rejected_inactive
+      - rejected_malformed
+      - rejected_rate_limit
+      - rejected_server_error
+      - source_slug
+      - total_accepted
+      - total_duplicates
+      - total_received
+      - total_rejected
+      - window_start
+    IngestionSummary:
+      type: object
+      description: Serializes aggregated operational metrics across a multi-minute
+        rolling window.
+      properties:
+        window_minutes:
+          type: integer
+          description: Time window analyzed in minutes.
+        total_received:
+          type: integer
+          description: Total requests received across window.
+        total_accepted:
+          type: integer
+          description: Total requests successfully accepted.
+        total_duplicates:
+          type: integer
+          description: Total idempotent duplicates detected.
+        total_rejected:
+          type: integer
+          description: Total requests rejected.
+        acceptance_rate_pct:
+          type: number
+          format: double
+          description: Percentage of requests accepted.
+        p95_latency_ms:
+          type: number
+          format: double
+          description: Aggregated 95th percentile latency in ms.
+        rejections_by_category:
+          type: object
+          additionalProperties: {}
+          description: Breakdown of rejections categorized by cause.
+        active_sources_count:
+          type: integer
+          description: Number of distinct webhook sources active.
+        timestamp:
+          type: string
+          format: date-time
+          description: Current timestamp of summary evaluation.
+      required:
+      - acceptance_rate_pct
+      - active_sources_count
+      - p95_latency_ms
+      - rejections_by_category
+      - timestamp
+      - total_accepted
+      - total_duplicates
+      - total_received
+      - total_rejected
+      - window_minutes
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    Monitor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        service:
+          type: string
+          format: uuid
+          description: Parent service being probed by this monitor
+        service_name:
+          type: string
+          readOnly: true
+        service_slug:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Descriptive probe name (e.g. 'Primary Healthz')
+          maxLength: 128
+        monitor_type:
+          $ref: '#/components/schemas/MonitorTypeEnum'
+        target_url:
+          type: string
+          description: Target URL or host:port to probe
+          maxLength: 512
+        interval_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Probe frequency in seconds
+        timeout_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Probe HTTP socket timeout in seconds
+        failure_threshold:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Consecutive probe failures required before creating an Incident
+        current_status:
+          allOf:
+          - $ref: '#/components/schemas/MonitorHealthStatusEnum'
+          readOnly: true
+        consecutive_failures:
+          type: integer
+          readOnly: true
+        last_response_time_ms:
+          type: number
+          format: double
+          readOnly: true
+        last_checked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        recent_checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitorCheckResult'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+      required:
+      - consecutive_failures
+      - created_at
+      - current_status
+      - id
+      - last_checked_at
+      - last_response_time_ms
+      - name
+      - recent_checks
+      - service
+      - service_name
+      - service_slug
+      - target_url
+      - updated_at
+    MonitorCheckResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MonitorHealthStatusEnum'
+          readOnly: true
+        response_time_ms:
+          type: number
+          format: double
+          readOnly: true
+        status_code:
+          type: integer
+          readOnly: true
+          nullable: true
+        error_message:
+          type: string
+          readOnly: true
+        checked_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - checked_at
+      - error_message
+      - id
+      - response_time_ms
+      - status
+      - status_code
+    MonitorHealthStatusEnum:
+      enum:
+      - UP
+      - DEGRADED
+      - DOWN
+      - UNKNOWN
+      type: string
+      description: |-
+        * `UP` - Healthy / Operational
+        * `DEGRADED` - Degraded / High Latency
+        * `DOWN` - Down / Unreachable
+        * `UNKNOWN` - Unknown / Not Checked
+    MonitorTypeEnum:
+      enum:
+      - HTTP_GET
+      - HTTP_POST
+      - TCP_PORT
+      - SSL_CERT
+      type: string
+      description: |-
+        * `HTTP_GET` - HTTP GET Probe
+        * `HTTP_POST` - HTTP POST Heartbeat
+        * `TCP_PORT` - TCP Port Connectivity
+        * `SSL_CERT` - SSL Certificate Expiry
+    NotificationDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        incident:
+          type: string
+          format: uuid
+          description: Globally unique 128-bit identifier for this record.
+          readOnly: true
+        destination:
+          type: string
+          format: uuid
+          description: Globally unique 128-bit identifier for this record.
+          readOnly: true
+        destination_name:
+          type: string
+          readOnly: true
+        destination_type:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DeliveryStatusEnum'
+          readOnly: true
+        event_type:
+          type: string
+          readOnly: true
+          description: e.g. 'INCIDENT_OPENED', 'RESOLVED'
+        payload_snapshot:
+          readOnly: true
+          description: Snapshot of JSON payload dispatched
+        response_status_code:
+          type: integer
+          readOnly: true
+          nullable: true
+        error_message:
+          type: string
+          readOnly: true
+        delivered_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - delivered_at
+      - destination
+      - destination_name
+      - destination_type
+      - error_message
+      - event_type
+      - id
+      - incident
+      - payload_snapshot
+      - response_status_code
+      - status
+    NotificationDestination:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        name:
+          type: string
+          description: Destination label (e.g. 'Primary On-Call Slack')
+          maxLength: 128
+        destination_type:
+          allOf:
+          - $ref: '#/components/schemas/DestinationTypeEnum'
+          description: |-
+            Integration delivery adapter type
+
+            * `WEBHOOK` - Generic Outbound Webhook (HTTP POST)
+            * `SLACK` - Slack Incoming Webhook
+            * `PAGERDUTY` - PagerDuty Events API v2
+            * `CONSOLE` - Local Console / Mock Delivery
+        endpoint_url:
+          type: string
+          description: Target URL for HTTP POST webhook deliveries
+          maxLength: 512
+        auth_header:
+          type: string
+          writeOnly: true
+          description: Optional Authorization header value (e.g. 'Bearer token')
+          maxLength: 255
+        is_active:
+          type: boolean
+          description: Enables or disables notification dispatch
+        deliveries_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+      required:
+      - created_at
+      - deliveries_count
+      - id
+      - name
+      - updated_at
+    PatchedMonitor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        service:
+          type: string
+          format: uuid
+          description: Parent service being probed by this monitor
+        service_name:
+          type: string
+          readOnly: true
+        service_slug:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Descriptive probe name (e.g. 'Primary Healthz')
+          maxLength: 128
+        monitor_type:
+          $ref: '#/components/schemas/MonitorTypeEnum'
+        target_url:
+          type: string
+          description: Target URL or host:port to probe
+          maxLength: 512
+        interval_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Probe frequency in seconds
+        timeout_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Probe HTTP socket timeout in seconds
+        failure_threshold:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Consecutive probe failures required before creating an Incident
+        current_status:
+          allOf:
+          - $ref: '#/components/schemas/MonitorHealthStatusEnum'
+          readOnly: true
+        consecutive_failures:
+          type: integer
+          readOnly: true
+        last_response_time_ms:
+          type: number
+          format: double
+          readOnly: true
+        last_checked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        recent_checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitorCheckResult'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+    PatchedNotificationDestination:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        name:
+          type: string
+          description: Destination label (e.g. 'Primary On-Call Slack')
+          maxLength: 128
+        destination_type:
+          allOf:
+          - $ref: '#/components/schemas/DestinationTypeEnum'
+          description: |-
+            Integration delivery adapter type
+
+            * `WEBHOOK` - Generic Outbound Webhook (HTTP POST)
+            * `SLACK` - Slack Incoming Webhook
+            * `PAGERDUTY` - PagerDuty Events API v2
+            * `CONSOLE` - Local Console / Mock Delivery
+        endpoint_url:
+          type: string
+          description: Target URL for HTTP POST webhook deliveries
+          maxLength: 512
+        auth_header:
+          type: string
+          writeOnly: true
+          description: Optional Authorization header value (e.g. 'Bearer token')
+          maxLength: 255
+        is_active:
+          type: boolean
+          description: Enables or disables notification dispatch
+        deliveries_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+    PatchedService:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        name:
+          type: string
+          description: Human-readable service name (e.g. 'Checkout API')
+          maxLength: 128
+        slug:
+          type: string
+          description: Canonical identifier (e.g. 'checkout-api')
+          maxLength: 128
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          description: Overview of service responsibilities and architecture
+        tier:
+          allOf:
+          - $ref: '#/components/schemas/ServiceTierEnum'
+          description: |-
+            Operational priority tier
+
+            * `TIER_0` - Tier 0 (Mission Critical)
+            * `TIER_1` - Tier 1 (Core Business)
+            * `TIER_2` - Tier 2 (Internal / Support)
+        is_active:
+          type: boolean
+          description: Controls whether active health checks execute
+        monitors_count:
+          type: integer
+          readOnly: true
+        active_incidents_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+    PatchedUserRoleUpdate:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+    PatchedWebhookSource:
+      type: object
+      description: Serializer for managing webhook source integrations in the operator
+        dashboard.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        name:
+          type: string
+          description: Human-readable name of the webhook source service.
+          maxLength: 100
+        slug:
+          type: string
+          description: Unique URL identifier for routing incoming HTTP POST requests.
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        secret_key:
+          type: string
+          description: Shared secret key used to verify HMAC-SHA256 request payload
+            signatures.
+          maxLength: 255
+        is_active:
+          type: boolean
+          description: Enables or disables webhook ingestion for this source immediately.
+        rate_limit_per_minute:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Maximum allowed incoming webhook requests per minute before
+            rate-limiting.
+        total_payloads:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+    RoleEnum:
+      enum:
+      - VIEWER
+      - OPERATOR
+      - ADMIN
+      type: string
+      description: |-
+        * `VIEWER` - Viewer
+        * `OPERATOR` - Operator
+        * `ADMIN` - Admin
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        name:
+          type: string
+          description: Human-readable service name (e.g. 'Checkout API')
+          maxLength: 128
+        slug:
+          type: string
+          description: Canonical identifier (e.g. 'checkout-api')
+          maxLength: 128
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          description: Overview of service responsibilities and architecture
+        tier:
+          allOf:
+          - $ref: '#/components/schemas/ServiceTierEnum'
+          description: |-
+            Operational priority tier
+
+            * `TIER_0` - Tier 0 (Mission Critical)
+            * `TIER_1` - Tier 1 (Core Business)
+            * `TIER_2` - Tier 2 (Internal / Support)
+        is_active:
+          type: boolean
+          description: Controls whether active health checks execute
+        monitors_count:
+          type: integer
+          readOnly: true
+        active_incidents_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+      required:
+      - active_incidents_count
+      - created_at
+      - id
+      - monitors_count
+      - name
+      - slug
+      - updated_at
+    ServiceTierEnum:
+      enum:
+      - TIER_0
+      - TIER_1
+      - TIER_2
+      type: string
+      description: |-
+        * `TIER_0` - Tier 0 (Mission Critical)
+        * `TIER_1` - Tier 1 (Core Business)
+        * `TIER_2` - Tier 2 (Internal / Support)
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        is_staff:
+          type: boolean
+        is_superuser:
+          type: boolean
+        role:
+          type: string
+      required:
+      - email
+      - id
+      - is_staff
+      - is_superuser
+      - role
+      - username
+    WebhookIngestion:
+      type: object
+      description: |-
+        Validates incoming raw webhook payload envelopes.
+
+        Accepts raw alert data from external producers (e.g., PagerDuty, Datadog),
+        extracts or generates a client tracking ID, and validates structural integrity.
+      properties:
+        tracking_id:
+          type: string
+          description: Optional upstream tracking or request correlation ID (e.g.,
+            'alert-req-90812').
+          maxLength: 128
+        event_type:
+          type: string
+          default: alert.trigger
+          description: Vendor-specific event classification string.
+          maxLength: 100
+        payload:
+          description: The arbitrary raw JSON payload sent by the webhook producer.
+      required:
+      - payload
+    WebhookIngestionResponse:
+      type: object
+      description: |-
+        Serializes the HTTP 202 Accepted response payload returned by the gateway.
+        Used for automated OpenAPI 3.0 Swagger schema documentation.
+      properties:
+        status:
+          type: string
+          default: accepted
+          description: Status acknowledging successful receipt and queuing of the
+            webhook.
+        source:
+          type: string
+          description: URL slug of the authenticated webhook source (e.g., 'pagerduty').
+        tracking_id:
+          type: string
+          description: Unique tracking ID assigned to this ingestion lifecycle.
+        idempotency_hash:
+          type: string
+          description: SHA-256 fingerprint generated from the raw payload body for
+            deduplication.
+        received_at:
+          type: string
+          format: date-time
+          description: UTC timestamp when the gateway received and recorded the webhook.
+        message:
+          type: string
+          default: Webhook queued for processing
+          description: Human-readable processing confirmation.
+      required:
+      - idempotency_hash
+      - received_at
+      - source
+      - tracking_id
+    WebhookSource:
+      type: object
+      description: Serializer for managing webhook source integrations in the operator
+        dashboard.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Globally unique 128-bit identifier for this record.
+        name:
+          type: string
+          description: Human-readable name of the webhook source service.
+          maxLength: 100
+        slug:
+          type: string
+          description: Unique URL identifier for routing incoming HTTP POST requests.
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        secret_key:
+          type: string
+          description: Shared secret key used to verify HMAC-SHA256 request payload
+            signatures.
+          maxLength: 255
+        is_active:
+          type: boolean
+          description: Enables or disables webhook ingestion for this source immediately.
+        rate_limit_per_minute:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Maximum allowed incoming webhook requests per minute before
+            rate-limiting.
+        total_payloads:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was inserted.
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Exact timestamp (UTC) when this record was last modified.
+      required:
+      - created_at
+      - id
+      - name
+      - secret_key
+      - slug
+      - total_payloads
+      - updated_at
+    WebhookSourceCreate:
+      type: object
+      description: Serializer for registering a new webhook source integration.
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the webhook source service.
+          maxLength: 100
+        slug:
+          type: string
+          description: Unique URL identifier for routing incoming HTTP POST requests.
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        secret_key:
+          type: string
+          description: Shared secret key used to verify HMAC-SHA256 request payload
+            signatures.
+          maxLength: 255
+        is_active:
+          type: boolean
+          description: Enables or disables webhook ingestion for this source immediately.
+        rate_limit_per_minute:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Maximum allowed incoming webhook requests per minute before
+            rate-limiting.
+      required:
+      - name
+      - slug
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

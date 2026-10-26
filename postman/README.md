@@ -34,7 +34,7 @@ The **SignalBridge Zero-Setup Postman Verification Collection** is engineered fo
 | [`postman/SignalBridge_API_Verification.postman_collection.json`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/postman/SignalBridge_API_Verification.postman_collection.json) | Environment-driven collection variant (strict validation; halts if environment secret is missing). |
 | [`postman/SignalBridge_Local.postman_environment.json`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/postman/SignalBridge_Local.postman_environment.json) | Local environment definition (ignored in Git). |
 | [`postman/SignalBridge_Environment_Template.postman_environment.json`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/postman/SignalBridge_Environment_Template.postman_environment.json) | Sanitized environment template for CI/CD or staging sharing. |
-| [`docs/04_resources_and_fixtures/postman/`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/docs/04_resources_and_fixtures/postman/) | Mirrored copy stored inside project fixtures. |
+| [`postman/`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/postman/) | Authoritative collection and environment templates directory. |
 
 ---
 
