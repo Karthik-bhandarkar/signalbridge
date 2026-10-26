@@ -1,0 +1,22 @@
+# AWS Region
+aws_region = "us-east-1"
+
+# Project naming
+project_name = "signalbridge"
+environment  = "production"
+
+# Compute
+instance_type = "t3.medium"
+ssh_key_name  = "" # Set if you have an existing EC2 KeyPair in your AWS account
+
+# Administrative SSH access (replace with your personal IP: e.g. ["203.0.113.50/32"])
+admin_cidr_blocks = ["0.0.0.0/0"]
+
+# Database
+db_name           = "signalbridge_db"
+db_username       = "signalbridge_admin"
+db_password       = "SignalBridge_Prod_2026_Secure!"
+db_instance_class = "db.t4g.micro"
+
+# Cache
+redis_node_type = "cache.t4g.micro"

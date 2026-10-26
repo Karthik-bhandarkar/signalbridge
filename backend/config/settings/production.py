@@ -103,13 +103,14 @@ CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://redis:6379/1")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis:6379/2")
 
 # ---------------------------------------------------------------------------------
-# 5. COLD OBJECT STORAGE ARCHIVAL (OCI Object Storage S3-Compat / S3 API)
+# 5. COLD OBJECT STORAGE ARCHIVAL (AWS S3)
 # ---------------------------------------------------------------------------------
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "signalbridge-production-archives")
-AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-ashburn-1")
-AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")  # In OCI: https://<namespace>.compat.objectstorage.<region>.oraclecloud.com
+AWS_DEFAULT_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", AWS_DEFAULT_REGION)
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL") or None
 
 # ---------------------------------------------------------------------------------
 # 6. ENTERPRISE LOGGING CONFIGURATION

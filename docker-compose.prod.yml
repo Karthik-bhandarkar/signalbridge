@@ -3,67 +3,28 @@ name: signalbridge_prod
 services:
 
   # ---------------------------------------------------------------------------
-  # 1. Primary Relational Database: PostgreSQL 16
-  # Stores alerts, incidents, grouping keys, and audit logs with ACID safety.
-  # Isolated to internal bridge network (no external host port exposure).
+  # 1. Reverse Proxy & Frontend Web Server: Nginx
+  # Serves compiled React SPA assets, handles client routing, and proxies /api/
   # ---------------------------------------------------------------------------
-  postgres:
-    image: postgres:16-alpine
-    container_name: signalbridge_postgres_prod
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    container_name: signalbridge_nginx_prod
     restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${PROD_HTTP_PORT:-80}:80"
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-signalbridge_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      - django_static_volume:/app/static:ro
+    depends_on:
+      web:
+        condition: service_healthy
     networks:
       - signalbridge_prod_network
 
   # ---------------------------------------------------------------------------
-  # 2. In-Memory Cache & Message Broker: Redis 7
-  # Handles sub-millisecond idempotency deduplication keys and Celery broker queues.
-  # Configured with Append-Only File (AOF) persistence and memory bounds.
-  # ---------------------------------------------------------------------------
-  redis:
-    image: redis:7-alpine
-    container_name: signalbridge_redis_prod
-    restart: always
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
-    volumes:
-      - redis_prod_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - signalbridge_prod_network
-
-  # ---------------------------------------------------------------------------
-  # 3. Object Storage: S3Mock (Optional: Only active when --profile mock is passed)
-  # In AWS production, real AWS S3 is used directly via IAM Instance Profile.
-  # ---------------------------------------------------------------------------
-  s3:
-    image: adobe/s3mock:latest
-    container_name: signalbridge_s3_prod
-    restart: always
-    profiles: ["mock", "staging"]
-    environment:
-      initialBuckets: ${AWS_STORAGE_BUCKET_NAME:-signalbridge-production-archives}
-    networks:
-      - signalbridge_prod_network
-
-  # ---------------------------------------------------------------------------
-  # 4. Production Ingestion Gateway & Web API: Gunicorn WSGI + Django 5
+  # 2. Production Ingestion Gateway & Web API: Gunicorn WSGI + Django 5
   # High-throughput asynchronous multi-worker WSGI entrypoint with HTTP liveness probe.
-  # Binds strictly to localhost 127.0.0.1 to prevent unintended public exposure.
   # ---------------------------------------------------------------------------
   web:
     build:
@@ -85,31 +46,32 @@ services:
       --keep-alive 5
       --access-logfile -
       --error-logfile -
-    ports:
-      - "127.0.0.1:${PROD_WEB_PORT:-8001}:8000"
+    expose:
+      - "8000"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-production-key-for-local-staging-verification-012345}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web,nginx}
       DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-false}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-prefer}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
       AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-signalbridge-production-archives}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
       AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    volumes:
+      - django_static_volume:/app/static
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/live/"]
       interval: 15s
@@ -120,7 +82,7 @@ services:
       - signalbridge_prod_network
 
   # ---------------------------------------------------------------------------
-  # 5. Production Distributed Task Worker: Celery
+  # 3. Production Distributed Task Worker: Celery
   # Asynchronously groups alerts, calculates hashes, and executes row-level locks.
   # ---------------------------------------------------------------------------
   celery_worker:
@@ -134,32 +96,29 @@ services:
     command: celery -A config.celery worker -l info --concurrency=${CELERY_CONCURRENCY:-2} -Ofair
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-production-key-for-local-staging-verification-012345}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
       DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-false}
       POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-prefer}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
       AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-signalbridge-production-archives}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
       AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - signalbridge_prod_network
 
   # ---------------------------------------------------------------------------
-  # 6. Production Periodic Task Scheduler: Celery Beat
+  # 4. Production Periodic Task Scheduler: Celery Beat
   # Dispatches periodic active monitoring checks and metrics rollup sweeps.
   # ---------------------------------------------------------------------------
   celery_beat:
@@ -173,31 +132,81 @@ services:
     command: celery -A config.celery beat -l info
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-production-key-for-local-staging-verification-012345}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,web}
       DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-false}
       POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-prefer}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
       AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-signalbridge-production-archives}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
       AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-us-east-1}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    networks:
+      - signalbridge_prod_network
+
+  # ===========================================================================
+  # LOCAL STAGING PROFILE CONTAINERS (Active only when running local prod staging)
+  # When deployed on AWS with RDS, ElastiCache, and S3, these services are omitted.
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: signalbridge_postgres_prod
+    restart: always
+    profiles: ["local-staging"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-signalbridge_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - signalbridge_prod_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: signalbridge_redis_prod
+    restart: always
+    profiles: ["local-staging"]
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signalbridge_prod_network
+
+  s3:
+    image: adobe/s3mock:latest
+    container_name: signalbridge_s3_prod
+    restart: always
+    profiles: ["local-staging"]
+    environment:
+      initialBuckets: ${AWS_STORAGE_BUCKET_NAME:-signalbridge-production-archives}
     networks:
       - signalbridge_prod_network
 
 volumes:
+  django_static_volume:
+    name: signalbridge_prod_django_static
   postgres_prod_data:
     name: signalbridge_prod_postgres_data
   redis_prod_data:
