@@ -79,49 +79,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       aria-modal="true"
       aria-labelledby="login-modal-title"
       style={{
-        backdropFilter: 'blur(16px)',
-        backgroundColor: 'rgba(6, 4, 10, 0.78)',
+        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
       }}
     >
       <div
-        className="modal-content vexel-login-modal"
+        className="modal-content"
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '460px',
-          borderRadius: '24px',
+          borderRadius: '20px',
           overflow: 'hidden',
           position: 'relative',
-          border: '1px solid rgba(0, 131, 255, 0.35)',
-          background: 'linear-gradient(145deg, rgba(0, 31, 76, 0.45) 0%, rgba(6, 4, 10, 0.95) 60%)',
-          boxShadow: '0 20px 60px -15px rgba(0, 131, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+          border: '1px solid var(--border-subtle)',
+          background: 'var(--bg-surface)',
+          boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05)',
         }}
       >
-        {/* Ambient Vexel Blue Background Glow Orb */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '-50px',
-            right: '-30px',
-            width: '200px',
-            height: '200px',
-            borderRadius: '50%',
-            background: '#0083ff',
-            filter: 'blur(90px)',
-            opacity: 0.25,
-            pointerEvents: 'none',
-          }}
-        />
-
         {/* Modal Header */}
         <div
           style={{
             padding: '24px 28px 16px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            position: 'relative',
-            zIndex: 1,
           }}
         >
           <div>
@@ -131,15 +113,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  backgroundColor: '#0083ff',
-                  boxShadow: '0 0 10px #0083ff',
+                  backgroundColor: '#0284c7',
                 }}
               />
-              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#61acff' }}>
-                SignalBridge Perimeter Access
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-primary)' }}>
+                Perimeter Security Access
               </span>
             </div>
-            <h3 id="login-modal-title" style={{ fontSize: '19px', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
+            <h3 id="login-modal-title" style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Operator Authentication
             </h3>
           </div>
@@ -154,14 +135,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
 
         {/* Role Selector Tabs */}
-        <div style={{ padding: '16px 28px 0', position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: '16px 28px 0' }}>
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '14px',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '12px',
               padding: '4px',
               gap: '4px',
             }}
@@ -175,15 +156,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 justifyContent: 'center',
                 gap: '8px',
                 padding: '9px 12px',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 fontSize: '12.5px',
                 fontWeight: 700,
                 border: 'none',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                backgroundColor: selectedRole === 'viewer' ? '#0083ff' : 'transparent',
-                color: selectedRole === 'viewer' ? '#fff' : 'rgba(255, 255, 255, 0.7)',
-                boxShadow: selectedRole === 'viewer' ? '0 4px 14px rgba(0, 131, 255, 0.4)' : 'none',
+                transition: 'all 0.15s ease',
+                backgroundColor: selectedRole === 'viewer' ? '#0284c7' : 'transparent',
+                color: selectedRole === 'viewer' ? '#ffffff' : 'var(--text-secondary)',
+                boxShadow: selectedRole === 'viewer' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
               }}
             >
               <Eye size={14} />
@@ -199,15 +180,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 justifyContent: 'center',
                 gap: '8px',
                 padding: '9px 12px',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 fontSize: '12.5px',
                 fontWeight: 700,
                 border: 'none',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                backgroundColor: selectedRole === 'admin' ? '#4f46e5' : 'transparent',
-                color: selectedRole === 'admin' ? '#fff' : 'rgba(255, 255, 255, 0.7)',
-                boxShadow: selectedRole === 'admin' ? '0 4px 14px rgba(79, 70, 229, 0.4)' : 'none',
+                transition: 'all 0.15s ease',
+                backgroundColor: selectedRole === 'admin' ? '#0f172a' : 'transparent',
+                color: selectedRole === 'admin' ? '#ffffff' : 'var(--text-secondary)',
+                boxShadow: selectedRole === 'admin' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
               }}
             >
               <Shield size={14} />
@@ -220,25 +201,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             style={{
               marginTop: '12px',
               padding: '12px 14px',
-              borderRadius: '12px',
-              background: selectedRole === 'viewer' ? 'rgba(0, 131, 255, 0.08)' : 'rgba(79, 70, 229, 0.08)',
-              border: `1px solid ${selectedRole === 'viewer' ? 'rgba(0, 131, 255, 0.25)' : 'rgba(79, 70, 229, 0.25)'}`,
+              borderRadius: '10px',
+              background: selectedRole === 'viewer' ? 'rgba(2, 132, 199, 0.06)' : 'rgba(15, 23, 42, 0.04)',
+              border: `1px solid ${selectedRole === 'viewer' ? 'rgba(2, 132, 199, 0.2)' : 'var(--border-subtle)'}`,
               fontSize: '12px',
               lineHeight: 1.45,
-              color: 'rgba(255, 255, 255, 0.85)',
+              color: 'var(--text-secondary)',
             }}
           >
             {selectedRole === 'viewer' ? (
               <div>
-                <strong style={{ color: '#61acff' }}>👁️ Read-Only Exploration Mode:</strong>
-                <p style={{ margin: '4px 0 0', color: 'rgba(255, 255, 255, 0.7)' }}>
+                <strong style={{ color: '#0284c7' }}>👁️ Read-Only Exploration Mode:</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>
                   Inspect live incidents, query correlated alerts, view cold S3 JSON archives, and test simulated webhooks without administrative risk.
                 </p>
               </div>
             ) : (
               <div>
-                <strong style={{ color: '#a5b4fc' }}>🛡️ Full Administrator Mode:</strong>
-                <p style={{ margin: '4px 0 0', color: 'rgba(255, 255, 255, 0.7)' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>🛡️ Full Administrator Mode:</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>
                   Full control: create and configure webhook endpoints, rotate HMAC secrets, acknowledge, and resolve active production incidents.
                 </p>
               </div>
@@ -247,12 +228,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '16px 28px 28px', display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 1 }}>
+        <form onSubmit={handleSubmit} style={{ padding: '16px 28px 28px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {error && (
             <div
               style={{
-                background: 'rgba(244, 63, 94, 0.14)',
-                border: '1px solid rgba(244, 63, 94, 0.35)',
+                background: 'rgba(244, 63, 94, 0.1)',
+                border: '1px solid rgba(244, 63, 94, 0.3)',
                 borderRadius: '10px',
                 padding: '10px 14px',
                 fontSize: '12px',
@@ -268,11 +249,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
               Username
             </label>
             <div style={{ position: 'relative' }}>
-              <User size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: 'rgba(255, 255, 255, 0.4)' }} />
+              <User size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
               <input
                 type="text"
                 required
@@ -282,9 +263,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 style={{
                   width: '100%',
                   paddingLeft: '36px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.45)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
                   borderRadius: '10px',
                   fontSize: '13px',
                 }}
@@ -294,11 +275,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
               Password
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: 'rgba(255, 255, 255, 0.4)' }} />
+              <Lock size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
               <input
                 type="password"
                 required
@@ -308,9 +289,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 style={{
                   width: '100%',
                   paddingLeft: '36px',
-                  backgroundColor: 'rgba(0, 0, 0, 0.45)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
                   borderRadius: '10px',
                   fontSize: '13px',
                 }}
@@ -326,15 +307,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: '11.5px',
-              color: 'rgba(255, 255, 255, 0.65)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              color: 'var(--text-secondary)',
+              backgroundColor: 'var(--bg-surface-elevated)',
               padding: '8px 12px',
               borderRadius: '8px',
+              border: '1px solid var(--border-subtle)',
               fontFamily: 'JetBrains Mono, monospace',
             }}
           >
-            <span>Auto-fill: <strong>{username}</strong></span>
-            <span style={{ color: '#0083ff' }}>● {password}</span>
+            <span>Preset: <strong>{username}</strong></span>
+            <span style={{ color: '#0284c7' }}>● {password}</span>
           </div>
 
           {/* Action Buttons */}
@@ -345,13 +327,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               className="btn btn-primary"
               style={{
                 width: '100%',
-                padding: '11px',
-                borderRadius: '12px',
+                padding: '10px',
+                borderRadius: '10px',
                 fontSize: '13.5px',
                 fontWeight: 700,
-                backgroundColor: selectedRole === 'viewer' ? '#0083ff' : '#4f46e5',
-                borderColor: selectedRole === 'viewer' ? '#0083ff' : '#4f46e5',
-                boxShadow: selectedRole === 'viewer' ? '0 4px 18px rgba(0, 131, 255, 0.45)' : '0 4px 18px rgba(79, 70, 229, 0.45)',
+                backgroundColor: selectedRole === 'viewer' ? '#0284c7' : '#0f172a',
+                borderColor: selectedRole === 'viewer' ? '#0284c7' : '#0f172a',
               }}
             >
               {loading ? 'Authenticating...' : `Sign In as ${selectedRole === 'viewer' ? 'Demo Viewer' : 'Lead Admin'}`}
@@ -367,7 +348,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   padding: '9px',
                   borderRadius: '10px',
                   fontSize: '12px',
-                  color: '#61acff',
+                  color: '#0284c7',
                 }}
               >
                 <Sparkles size={13} />

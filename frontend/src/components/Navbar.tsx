@@ -32,9 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [health, setHealth] = useState<HealthCheckResponse | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('sb-theme') as 'light' | 'dark') || 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

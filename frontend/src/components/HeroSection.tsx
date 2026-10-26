@@ -234,27 +234,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   return (
     <section className="sb-hero">
-      {/* Ambient background glow accents */}
-      <div className="sb-hero-glow glow-left" />
-      <div className="sb-hero-glow glow-right" />
-
       {/* Top Banner Tag */}
       <div className="sb-hero-header">
         <div className="sb-pill-badge">
           <span className="pulse-ping" />
-          <Sparkles size={13} className="text-amber-500" />
-          <span className="badge-text">SignalBridge SRE Ingestion Engine</span>
+          <span className="badge-text">v1.2.0 • SRE Ingestion Gateway</span>
           <span className="badge-sep">•</span>
-          <span className="badge-sub">Sub-50ms HMAC & Cold S3 Archival</span>
+          <span className="badge-sub">Sub-50ms HMAC-SHA256 & Cold S3 Archival</span>
         </div>
 
         <h1 className="sb-hero-title">
-          From Webhook Chaos to <span className="highlight-text">Zero-Noise Incident Clarity</span>
+          Mission-Critical Webhook Ingestion & <span className="highlight-text">Incident Correlation</span>
         </h1>
 
         <p className="sb-hero-subtitle">
-          An enterprise-grade webhook ingestion platform that validates cryptographic HMAC signatures in
-          under 50ms, deduplicates burst floods with SHA-256 idempotency, correlates distributed alerts into
+          An enterprise ingestion platform that validates cryptographic HMAC signatures in
+          under 50ms, deduplicates burst floods with distributed SHA-256 caching, correlates alerts into
           actionable incidents, and archives raw payloads directly to Amazon S3.
         </p>
 
