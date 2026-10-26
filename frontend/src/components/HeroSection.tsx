@@ -404,6 +404,65 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </div>
         )}
       </div>
+
+      {/* Vexel AI Spatial Feature Pillars */}
+      <div className="sb-spatial-features-grid">
+        <div className="spatial-feature-card">
+          <div className="spatial-card-icon" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>
+            <Shield size={20} />
+          </div>
+          <h3 className="spatial-card-title">Ironclad HMAC Defense</h3>
+          <p className="spatial-card-desc">
+            Constant-time HMAC-SHA256 verification rejects forged webhooks in &lt;50ms before touching persistent storage.
+          </p>
+          <div className="spatial-card-tag">Zero-Trust Perimeter</div>
+        </div>
+
+        <div className="spatial-feature-card">
+          <div className="spatial-card-icon" style={{ color: '#6366f1', background: 'rgba(99, 102, 241, 0.1)' }}>
+            <Zap size={20} />
+          </div>
+          <h3 className="spatial-card-title">Distributed Idempotency</h3>
+          <p className="spatial-card-desc">
+            SHA-256 payload fingerprinting filters storm duplicates with 200 OK responses, eliminating alert fatigue.
+          </p>
+          <div className="spatial-card-tag">Storm Resilience</div>
+        </div>
+
+        <div className="spatial-feature-card">
+          <div className="spatial-card-icon" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)' }}>
+            <Database size={20} />
+          </div>
+          <h3 className="spatial-card-title">Amazon S3 Cold Archival</h3>
+          <p className="spatial-card-desc">
+            Raw incoming webhooks are archived to partitioned Amazon S3 JSON objects for permanent audit compliance.
+          </p>
+          <div className="spatial-card-tag">AWS Cloud Storage</div>
+        </div>
+      </div>
+
+      {/* PeachWorlds SRE Trust Counters */}
+      <div className="sb-trust-strip">
+        <div className="trust-item">
+          <div className="trust-number font-mono">99.99%</div>
+          <div className="trust-label">Guaranteed Ingestion ACK</div>
+        </div>
+        <div className="trust-sep" />
+        <div className="trust-item">
+          <div className="trust-number font-mono">&lt;45ms</div>
+          <div className="trust-label">P95 Processing Velocity</div>
+        </div>
+        <div className="trust-sep" />
+        <div className="trust-item">
+          <div className="trust-number font-mono">100%</div>
+          <div className="trust-label">HMAC-SHA256 Verified</div>
+        </div>
+        <div className="trust-sep" />
+        <div className="trust-item">
+          <div className="trust-number font-mono">Dual-Tier</div>
+          <div className="trust-label">PostgreSQL RDS + Amazon S3</div>
+        </div>
+      </div>
     </section>
   );
 };

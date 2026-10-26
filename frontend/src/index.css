@@ -53,15 +53,15 @@
 [data-theme="dark"] {
   --theme-mode: dark;
 
-  /* Deep obsidian dark mode */
-  --bg-base: #090d16;
-  --bg-surface: #0f1422;
-  --bg-surface-elevated: #161c2e;
-  --bg-surface-hover: #1e263d;
-  --surface-subtle: #121828;
+  /* PeachWorlds Vexel AI Cosmic Depth (#06040A) */
+  --bg-base: #06040a;
+  --bg-surface: #0c0915;
+  --bg-surface-elevated: #130f20;
+  --bg-surface-hover: #1b162c;
+  --surface-subtle: #090610;
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
@@ -1172,3 +1172,127 @@ table.data-table tr:hover td {
     padding: 16px 14px;
   }
 }
+
+/* =============================================================================
+   12. VEXEL AI / PEACHWORLDS SPATIAL PILLARS & SRE TRUST COUNTERS
+   ============================================================================= */
+
+.sb-spatial-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .sb-spatial-features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spatial-feature-card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 24px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.spatial-feature-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px var(--color-primary-glow);
+}
+
+.spatial-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.spatial-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.spatial-card-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.spatial-card-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: var(--color-primary-glow);
+  padding: 4px 10px;
+  border-radius: 20px;
+  align-self: flex-start;
+}
+
+/* SRE Trust Strip */
+.sb-trust-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 20px 24px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.trust-item {
+  text-align: center;
+  flex: 1;
+  min-width: 140px;
+}
+
+.trust-number {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.trust-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: -0.01em;
+}
+
+.trust-sep {
+  width: 1px;
+  height: 36px;
+  background: var(--border-subtle);
+}
+
+@media (max-width: 640px) {
+  .trust-sep {
+    display: none;
+  }
+}
+
