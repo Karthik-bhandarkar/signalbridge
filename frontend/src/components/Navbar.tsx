@@ -194,8 +194,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               )}
             </div>
-            <button onClick={onLogout} className="btn btn-secondary btn-sm" title="Log out">
+            <button
+              onClick={onLogout}
+              className="btn btn-secondary btn-sm"
+              title="Log out and return to Public Landing Page"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
               <LogOut size={13} />
+              <span>Exit</span>
             </button>
           </div>
         ) : (

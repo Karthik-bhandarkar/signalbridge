@@ -4,6 +4,7 @@ import { Sidebar, type NavTab } from './components/Sidebar';
 import { IncidentDetailModal } from './components/IncidentDetailModal';
 import { LoginModal } from './components/LoginModal';
 
+import { LandingPage } from './views/LandingPage';
 import { OverviewView } from './views/OverviewView';
 import { IncidentsView } from './views/IncidentsView';
 import { AlertsView } from './views/AlertsView';
@@ -13,7 +14,7 @@ import { NotificationsView } from './views/NotificationsView';
 import { AuditLogView } from './views/AuditLogView';
 
 import { api } from './lib/api';
-import type { AuthUser, Incident } from './types';
+import type { AuthUser, HealthCheckResponse, Incident } from './types';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
@@ -23,8 +24,26 @@ export const App: React.FC = () => {
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
-  // Global counts for badges:
+  // Health and incident state
+  const [health, setHealth] = useState<HealthCheckResponse | null>(null);
+  const [isHealthRefreshing, setIsHealthRefreshing] = useState(false);
   const [activeIncidents, setActiveIncidents] = useState<Incident[]>([]);
+
+  const fetchHealth = async () => {
+    try {
+      setIsHealthRefreshing(true);
+      const res = await api.health.ready();
+      setHealth(res);
+    } catch {
+      setHealth({
+        status: 'unready',
+        checks: { database: { status: 'offline' } },
+        timestamp: new Date().toISOString(),
+      });
+    } finally {
+      setIsHealthRefreshing(false);
+    }
+  };
 
   const handleOpenLogin = (preset: 'viewer' | 'admin' = 'viewer') => {
     setLoginPreset(preset);
@@ -65,26 +84,71 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchHealth();
     fetchCurrentUser();
-    fetchGlobalIncidentCounts();
-    const interval = setInterval(fetchGlobalIncidentCounts, 20000);
-    return () => clearInterval(interval);
+    const healthInterval = setInterval(fetchHealth, 15000);
+    return () => clearInterval(healthInterval);
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchGlobalIncidentCounts();
+      const incInterval = setInterval(fetchGlobalIncidentCounts, 20000);
+      return () => clearInterval(incInterval);
+    }
+  }, [currentUser]);
 
   const handleLogout = async () => {
     try {
       await api.auth.logout();
       setCurrentUser(null);
+      setCurrentTab('overview');
     } catch (err) {
       console.error('[App] Logout error:', err);
+      setCurrentUser(null);
     }
   };
 
   const criticalCount = activeIncidents.filter((i) => i.severity === 'CRITICAL').length;
 
+  // =========================================================================
+  // VIEW 1: PUBLIC LANDING PAGE (When NOT logged in)
+  // Dashboard & internal tools are strictly hidden until authenticated
+  // =========================================================================
+  if (!currentUser) {
+    return (
+      <>
+        <LandingPage
+          onOpenLogin={handleOpenLogin}
+          onQuickLoginAsViewer={handleQuickLoginAsViewer}
+          apiDocsUrl="/api/docs/"
+          health={health}
+          onRefreshHealth={fetchHealth}
+          isHealthRefreshing={isHealthRefreshing}
+        />
+
+        {showLoginModal && (
+          <LoginModal
+            initialRole={loginPreset}
+            onClose={() => setShowLoginModal(false)}
+            onSuccess={(user) => {
+              setCurrentUser(user);
+              setShowLoginModal(false);
+              fetchGlobalIncidentCounts();
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: OPERATOR COMMAND DASHBOARD (When authenticated)
+  // Full operational access to Incidents, Alerts, SRE Bento Grid, and Integrations
+  // =========================================================================
   return (
     <div className="app-container">
-      {/* Sidebar Navigation */}
+      {/* Internal Operational Sidebar */}
       <Sidebar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -93,7 +157,7 @@ export const App: React.FC = () => {
         onClose={() => setIsMobileNavOpen(false)}
       />
 
-      {/* Main Mission Control Body */}
+      {/* Main Operational View */}
       <div className="main-content">
         <Navbar
           currentUser={currentUser}
@@ -140,13 +204,14 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Operator Login Modal */}
+      {/* Login / Role Switching Modal */}
       {showLoginModal && (
         <LoginModal
           initialRole={loginPreset}
           onClose={() => setShowLoginModal(false)}
           onSuccess={(user) => {
             setCurrentUser(user);
+            setShowLoginModal(false);
             fetchGlobalIncidentCounts();
           }}
         />
