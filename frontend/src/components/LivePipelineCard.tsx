@@ -248,21 +248,26 @@ export const LivePipelineCard: React.FC<LivePipelineCardProps> = ({
         )}
       </div>
 
-      {/* 6. High-Trust Architecture Highlights Footer */}
+      {/* 6. Live Architecture Engine Specifications */}
       <div className="pipeline-telemetry-strip">
         <div className="telemetry-item">
-          <span className="t-val font-mono">&lt;45ms</span>
-          <span className="t-label">P95 Ingestion SLA</span>
+          <span className="t-val font-mono">FastAPI + Celery</span>
+          <span className="t-label">Async Non-Blocking Worker</span>
         </div>
         <div className="t-sep" />
         <div className="telemetry-item">
-          <span className="t-val font-mono">100%</span>
-          <span className="t-label">Idempotent Storm Shield</span>
+          <span className="t-val font-mono">HMAC-SHA256</span>
+          <span className="t-label">Constant-Time Cryptography</span>
         </div>
         <div className="t-sep" />
         <div className="telemetry-item">
-          <span className="t-val font-mono">Dual-Tier</span>
-          <span className="t-label">PostgreSQL RDS + S3</span>
+          <span className="t-val font-mono">Redis 7 Dedup</span>
+          <span className="t-label">10m Sliding Window Filter</span>
+        </div>
+        <div className="t-sep" />
+        <div className="telemetry-item">
+          <span className="t-val font-mono">Amazon S3</span>
+          <span className="t-label">Immutable Raw Payload Archive</span>
         </div>
       </div>
     </div>
