@@ -79,7 +79,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     if (scenario === 'critical') {
       payload = {
         event: 'incident.trigger',
-        service: 'payment-gateway',
+        service: 'payment-api',
         title: 'CRITICAL: Database connection pool exhaustion under peak load',
         severity: 'CRITICAL',
         tracking_id: traceId,
@@ -229,7 +229,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="public-landing-container">
-      {/* 1. Spacious, High-Contrast Public Top Navigation */}
+      {/* 1. Solid, Crisp Public Top Navigation */}
       <header className="public-navbar">
         <div className="pub-nav-left">
           <div className="pub-brand-logo">
@@ -264,7 +264,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             href={apiDocsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-sm nav-docs-btn"
           >
             <ExternalLink size={13} />
             <span>API Docs</span>
@@ -276,7 +276,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             className="btn btn-primary btn-sm pub-cta-btn"
           >
             <Eye size={14} />
-            <span>Explore Live Demo (1-Click)</span>
+            <span>Live Demo (1-Click)</span>
           </button>
 
           <button
@@ -290,101 +290,82 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </header>
 
-      {/* 2. Hero Section: Clear Value Narrative + Live Ingestion Pipeline Card */}
-      <section className="pub-hero-section">
-        <div className="pub-hero-grid">
-          {/* Left Column: Clear Problem, Solution, and 1-Click Access */}
-          <div className="pub-hero-left">
-            <div className="sb-pill-badge">
-              <span className="pulse-ping" />
-              <span className="badge-text">v1.2.0 • SRE Ingestion Gateway</span>
-              <span className="badge-sep">•</span>
-              <span className="badge-sub">Sub-50ms HMAC-SHA256 & Cold S3 Storage</span>
+      {/* 2. Main Centered Hero Layout: Clean Typography, Clear Actions & Telemetry Showcase */}
+      <main className="pub-main-content">
+        <section className="pub-hero-centered">
+          <div className="sb-pill-badge">
+            <span className="pulse-ping" />
+            <span className="badge-text">v1.2.0 • SRE Ingestion Gateway</span>
+            <span className="badge-sep">•</span>
+            <span className="badge-sub">Sub-50ms HMAC-SHA256 & Cold S3 Storage</span>
+          </div>
+
+          <h1 className="pub-hero-title-centered">
+            Stop Alert Storms.{' '}
+            <span className="highlight-text-blue">Ingest Webhooks in &lt;50ms.</span>
+          </h1>
+
+          <p className="pub-hero-subtitle-centered">
+            SignalBridge is an enterprise webhook ingestion engine engineered to eliminate on-call alert fatigue.
+            It validates cryptographic HMAC signatures at the perimeter, deduplicates burst floods with distributed
+            Redis SHA-256 caching, aggregates cascading alerts into actionable incident cases, and cold-archives
+            raw JSON payloads directly to Amazon S3.
+          </p>
+
+          {/* Primary Action Buttons */}
+          <div className="pub-hero-cta-group">
+            <button
+              type="button"
+              onClick={onQuickLoginAsViewer}
+              className="btn btn-primary pub-hero-primary-btn"
+            >
+              <Eye size={16} />
+              <span>Launch Demo Dashboard (1-Click)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenLogin('admin')}
+              className="btn btn-secondary pub-hero-secondary-btn"
+            >
+              <Lock size={15} />
+              <span>Sign In as Admin</span>
+            </button>
+          </div>
+
+          {/* Pre-configured Credentials Banner */}
+          <div className="pub-creds-hint-banner font-mono">
+            <span className="hint-pill">Default Accounts:</span>
+            <span>Demo Viewer: <strong>viewer / Viewer123!</strong></span>
+            <span className="hint-sep">•</span>
+            <span>Lead Admin: <strong>admin / Admin123!</strong></span>
+          </div>
+
+          {/* SRE Trust Metrics Strip */}
+          <div className="pub-hero-metrics-strip">
+            <div className="h-metric">
+              <span className="h-val font-mono">&lt;45ms</span>
+              <span className="h-lbl">P95 Ingestion SLA</span>
             </div>
-
-            <h1 className="pub-hero-headline">
-              Stop Alert Storms.{' '}
-              <span className="highlight-text-blue">Ingest Webhooks in &lt;50ms.</span>
-            </h1>
-
-            <p className="pub-hero-lead">
-              SignalBridge is an enterprise webhook ingestion engine engineered to eliminate on-call fatigue.
-              It validates cryptographic HMAC signatures at the edge, deduplicates burst storms with distributed
-              Redis SHA-256 caching, aggregates cascading alerts into actionable incident cases, and cold-archives
-              raw JSON payloads to Amazon S3.
-            </p>
-
-            {/* Fast Role Access Box */}
-            <div className="pub-access-box">
-              <div className="pub-access-header">
-                <span className="pub-access-title">Instant Access — Choose Role to Launch Dashboard</span>
-                <span className="pill-tag font-mono" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7' }}>
-                  Pre-configured Accounts
-                </span>
-              </div>
-
-              <div className="pub-roles-row">
-                {/* 1. Demo Viewer Card */}
-                <div className="pub-role-mini-card card-viewer">
-                  <div className="mini-card-head">
-                    <div className="mini-icon-box" style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
-                      <Eye size={16} />
-                    </div>
-                    <div>
-                      <div className="mini-card-name">Demo Viewer</div>
-                      <span className="mini-card-tag">Safe Exploration • Read-Only</span>
-                    </div>
-                  </div>
-                  <p className="mini-card-desc">
-                    Explore active incidents, correlated alerts, SRE Bento Grid metrics, and Amazon S3 JSON cold archives without modifying production configs.
-                  </p>
-                  <div className="mini-card-creds font-mono">
-                    <span>User: <strong>viewer</strong></span>
-                    <span>Pass: <strong>Viewer123!</strong></span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onQuickLoginAsViewer}
-                    className="btn btn-primary btn-sm mini-action-btn"
-                  >
-                    <Eye size={13} />
-                    <span>Launch Demo Dashboard</span>
-                  </button>
-                </div>
-
-                {/* 2. Lead Admin Card */}
-                <div className="pub-role-mini-card card-admin">
-                  <div className="mini-card-head">
-                    <div className="mini-icon-box" style={{ background: 'rgba(79, 70, 229, 0.12)', color: '#4f46e5' }}>
-                      <Lock size={16} />
-                    </div>
-                    <div>
-                      <div className="mini-card-name">Lead Administrator</div>
-                      <span className="mini-card-tag">Full SRE Operations</span>
-                    </div>
-                  </div>
-                  <p className="mini-card-desc">
-                    Full management authority: register new webhook sources, rotate HMAC secrets, transition incident states (ACK/Resolve), and trigger automated drills.
-                  </p>
-                  <div className="mini-card-creds font-mono">
-                    <span>User: <strong>admin</strong></span>
-                    <span>Pass: <strong>Admin123!</strong></span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onOpenLogin('admin')}
-                    className="btn btn-secondary btn-sm mini-action-btn"
-                  >
-                    <LogIn size={13} />
-                    <span>Sign In as Admin</span>
-                  </button>
-                </div>
-              </div>
+            <div className="h-sep" />
+            <div className="h-metric">
+              <span className="h-val font-mono">100%</span>
+              <span className="h-lbl">Idempotent Storm Shield</span>
+            </div>
+            <div className="h-sep" />
+            <div className="h-metric">
+              <span className="h-val font-mono">Zero-Loss</span>
+              <span className="h-lbl">Celery & Redis Buffer</span>
+            </div>
+            <div className="h-sep" />
+            <div className="h-metric">
+              <span className="h-val font-mono">Dual-Tier</span>
+              <span className="h-lbl">PostgreSQL RDS + S3</span>
             </div>
           </div>
 
-          {/* Right Column: Live Pipeline & Telemetry Card (Replaces Clunky 3D Blob) */}
-          <div className="pub-hero-right">
+          {/* Full-Width Telemetry & Pipeline Showcase Card */}
+          <div className="pub-showcase-container">
             <LivePipelineCard
               onRunSimulation={runSimulation}
               simulationResult={simulationResult}
@@ -392,130 +373,130 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               apiDocsUrl={apiDocsUrl}
             />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 3. Architecture Pipeline Flow Visualization */}
-      <section className="pub-section-card">
-        <div className="pipeline-header">
-          <div className="pipeline-title">
-            <Zap size={16} color="#0284c7" />
-            <span>End-to-End Ingestion &amp; Incident Lifecycle</span>
+        {/* 3. Architecture Pipeline Flow Visualization */}
+        <section className="pub-section-card">
+          <div className="pipeline-header">
+            <div className="pipeline-title">
+              <Zap size={16} color="#0284c7" />
+              <span>End-to-End Ingestion &amp; Incident Lifecycle</span>
+            </div>
+            <span className="pipeline-status">
+              <span className="pulse-dot dot-ready" /> Verified Local &amp; AWS Deployment
+            </span>
           </div>
-          <span className="pipeline-status">
-            <span className="pulse-dot dot-ready" /> Verified Local &amp; AWS Deployment
-          </span>
-        </div>
 
-        <div className="pipeline-grid">
-          {pipelineStages.map((stage, idx) => {
-            const Icon = stage.icon;
-            const isHovered = activePipelineStage === idx;
-            return (
-              <React.Fragment key={stage.id}>
-                <div
-                  className={`pipeline-node ${isHovered ? 'active' : ''}`}
-                  onMouseEnter={() => setActivePipelineStage(idx)}
-                >
-                  <div className="node-icon-wrapper" style={{ backgroundColor: `${stage.color}15`, color: stage.color }}>
-                    <Icon size={20} />
-                  </div>
-                  <div className="node-content">
-                    <div className="node-title-row">
-                      <span className="node-title">{stage.title}</span>
-                      <span className="node-badge">{stage.badge}</span>
+          <div className="pipeline-grid">
+            {pipelineStages.map((stage, idx) => {
+              const Icon = stage.icon;
+              const isHovered = activePipelineStage === idx;
+              return (
+                <React.Fragment key={stage.id}>
+                  <div
+                    className={`pipeline-node ${isHovered ? 'active' : ''}`}
+                    onMouseEnter={() => setActivePipelineStage(idx)}
+                  >
+                    <div className="node-icon-wrapper" style={{ backgroundColor: `${stage.color}15`, color: stage.color }}>
+                      <Icon size={20} />
                     </div>
-                    <p className="node-desc">{stage.desc}</p>
+                    <div className="node-content">
+                      <div className="node-title-row">
+                        <span className="node-title">{stage.title}</span>
+                        <span className="node-badge">{stage.badge}</span>
+                      </div>
+                      <p className="node-desc">{stage.desc}</p>
+                    </div>
                   </div>
-                </div>
 
-                {idx < pipelineStages.length - 1 && (
-                  <div className="pipeline-connector">
-                    <ArrowRight size={16} />
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 4. Four Core Architectural Pillars */}
-      <section className="pub-features-grid">
-        <div className="spatial-feature-card">
-          <div className="spatial-card-icon" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>
-            <Shield size={20} />
+                  {idx < pipelineStages.length - 1 && (
+                    <div className="pipeline-connector">
+                      <ArrowRight size={16} />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
-          <h3 className="spatial-card-title">Ironclad HMAC Perimeter</h3>
-          <p className="spatial-card-desc">
-            Constant-time SHA-256 signature verification rejects forged payloads in &lt;50ms before touching persistent storage or database connections.
-          </p>
-          <div className="spatial-card-tag">Zero-Trust Security</div>
-        </div>
+        </section>
 
-        <div className="spatial-feature-card">
-          <div className="spatial-card-icon" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.1)' }}>
-            <RotateCcw size={20} />
+        {/* 4. Four Core Architectural Pillars */}
+        <section className="pub-features-grid">
+          <div className="spatial-feature-card">
+            <div className="spatial-card-icon" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>
+              <Shield size={20} />
+            </div>
+            <h3 className="spatial-card-title">Ironclad HMAC Perimeter</h3>
+            <p className="spatial-card-desc">
+              Constant-time SHA-256 signature verification rejects forged payloads in &lt;50ms before touching persistent storage or database connections.
+            </p>
+            <div className="spatial-card-tag">Zero-Trust Security</div>
           </div>
-          <h3 className="spatial-card-title">Distributed Idempotency</h3>
-          <p className="spatial-card-desc">
-            SHA-256 canonical payload hashing with Redis deduplication drops storm floods with HTTP 200 responses, eradicating on-call alert fatigue.
-          </p>
-          <div className="spatial-card-tag">Storm Resilience</div>
-        </div>
 
-        <div className="spatial-feature-card">
-          <div className="spatial-card-icon" style={{ color: '#8b5cf6', background: 'rgba(139, 92, 246, 0.1)' }}>
-            <Layers size={20} />
+          <div className="spatial-feature-card">
+            <div className="spatial-card-icon" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.1)' }}>
+              <RotateCcw size={20} />
+            </div>
+            <h3 className="spatial-card-title">Distributed Idempotency</h3>
+            <p className="spatial-card-desc">
+              SHA-256 canonical payload hashing with Redis deduplication drops storm floods with HTTP 200 responses, eradicating on-call alert fatigue.
+            </p>
+            <div className="spatial-card-tag">Storm Resilience</div>
           </div>
-          <h3 className="spatial-card-title">Intelligent Correlation</h3>
-          <p className="spatial-card-desc">
-            Automatically aggregates cascade alerts into a single actionable incident case based on service, fingerprint, and escalation thresholds.
-          </p>
-          <div className="spatial-card-tag">Celery Async Engine</div>
-        </div>
 
-        <div className="spatial-feature-card">
-          <div className="spatial-card-icon" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)' }}>
-            <Database size={20} />
+          <div className="spatial-feature-card">
+            <div className="spatial-card-icon" style={{ color: '#8b5cf6', background: 'rgba(139, 92, 246, 0.1)' }}>
+              <Layers size={20} />
+            </div>
+            <h3 className="spatial-card-title">Intelligent Correlation</h3>
+            <p className="spatial-card-desc">
+              Automatically aggregates cascade alerts into a single actionable incident case based on service, fingerprint, and escalation thresholds.
+            </p>
+            <div className="spatial-card-tag">Celery Async Engine</div>
           </div>
-          <h3 className="spatial-card-title">Amazon S3 Cold Archival</h3>
-          <p className="spatial-card-desc">
-            Raw incoming webhooks are archived to partitioned Amazon S3 JSON objects for permanent compliance, legal retention, and forensic post-mortems.
-          </p>
-          <div className="spatial-card-tag">AWS Cloud Storage</div>
-        </div>
-      </section>
 
-      {/* 5. Bottom Call to Action Banner */}
-      <section className="pub-cta-banner">
-        <div className="cta-left">
-          <h3 className="cta-heading">Ready to explore the Operator Control Room?</h3>
-          <p className="cta-sub">
-            Log in as Demo Viewer to examine live alert streams and S3 keys, or sign in as Lead Administrator for full SRE operational control.
-          </p>
-        </div>
-        <div className="cta-actions">
-          <button
-            type="button"
-            onClick={onQuickLoginAsViewer}
-            className="btn btn-primary"
-            style={{ padding: '12px 24px', fontSize: '14px', fontWeight: 600 }}
-          >
-            <Eye size={16} />
-            <span>Launch Demo Dashboard</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenLogin('admin')}
-            className="btn btn-secondary"
-            style={{ padding: '12px 20px', fontSize: '14px' }}
-          >
-            <Lock size={15} />
-            <span>Operator Sign In</span>
-          </button>
-        </div>
-      </section>
+          <div className="spatial-feature-card">
+            <div className="spatial-card-icon" style={{ color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)' }}>
+              <Database size={20} />
+            </div>
+            <h3 className="spatial-card-title">Amazon S3 Cold Archival</h3>
+            <p className="spatial-card-desc">
+              Raw incoming webhooks are archived to partitioned Amazon S3 JSON objects for permanent compliance, legal retention, and forensic post-mortems.
+            </p>
+            <div className="spatial-card-tag">AWS Cloud Storage</div>
+          </div>
+        </section>
+
+        {/* 5. Bottom Call to Action Banner */}
+        <section className="pub-cta-banner">
+          <div className="cta-left">
+            <h3 className="cta-heading">Ready to explore the Operator Control Room?</h3>
+            <p className="cta-sub">
+              Log in as Demo Viewer to examine live alert streams and S3 keys, or sign in as Lead Administrator for full SRE operational control.
+            </p>
+          </div>
+          <div className="cta-actions">
+            <button
+              type="button"
+              onClick={onQuickLoginAsViewer}
+              className="btn btn-primary"
+              style={{ padding: '12px 24px', fontSize: '14px', fontWeight: 600 }}
+            >
+              <Eye size={16} />
+              <span>Launch Demo Dashboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenLogin('admin')}
+              className="btn btn-secondary"
+              style={{ padding: '12px 20px', fontSize: '14px' }}
+            >
+              <Lock size={15} />
+              <span>Operator Sign In</span>
+            </button>
+          </div>
+        </section>
+      </main>
 
       {/* 6. Clean Engineering Footer */}
       <footer className="pub-footer">

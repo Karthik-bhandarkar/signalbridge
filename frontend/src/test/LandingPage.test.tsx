@@ -33,10 +33,10 @@ describe('Public LandingPage Component', () => {
     expect(screen.getByText('INGESTION GATEWAY TELEMETRY')).toBeInTheDocument();
     expect(screen.getByText('P1 Database Exhaustion')).toBeInTheDocument();
 
-    // Role access cards
-    expect(screen.getByText('Demo Viewer')).toBeInTheDocument();
-    expect(screen.getByText('Lead Administrator')).toBeInTheDocument();
-    expect(screen.getAllByText('Launch Demo Dashboard').length).toBeGreaterThan(0);
+    // Role access hints
+    expect(screen.getAllByText(/Demo Viewer/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Lead Admin/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Launch Demo Dashboard (1-Click)').length).toBeGreaterThan(0);
   });
 
   it('triggers quick viewer login and admin sign in from public CTAs', async () => {
@@ -56,7 +56,7 @@ describe('Public LandingPage Component', () => {
       );
     });
 
-    const quickLoginBtn = screen.getAllByText('Launch Demo Dashboard')[0];
+    const quickLoginBtn = screen.getAllByText('Launch Demo Dashboard (1-Click)')[0];
     fireEvent.click(quickLoginBtn);
     expect(handleQuickLoginAsViewer).toHaveBeenCalledTimes(1);
 
