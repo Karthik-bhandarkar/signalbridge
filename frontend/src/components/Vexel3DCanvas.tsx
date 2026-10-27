@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 interface Vexel3DCanvasProps {
   className?: string;
@@ -86,8 +87,11 @@ export const Vexel3DCanvas: React.FC<Vexel3DCanvasProps> = ({
       return group;
     };
 
-    // 4. Load Vexel 3D Model
+    // 4. Load Vexel 3D Model with Draco decompression
     const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    loader.setDRACOLoader(dracoLoader);
     loader.load(
       '/assets-3d/model.glb',
       (gltf) => {
@@ -219,6 +223,7 @@ export const Vexel3DCanvas: React.FC<Vexel3DCanvasProps> = ({
       }
       renderer.dispose();
       blueMaterial.dispose();
+      dracoLoader.dispose();
     };
   }, [interactive]);
 
