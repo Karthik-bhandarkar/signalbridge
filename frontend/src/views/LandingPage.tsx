@@ -4,21 +4,16 @@ import {
   Shield,
   Layers,
   Database,
-  CheckCircle,
-  AlertOctagon,
-  AlertTriangle,
   RotateCcw,
   Zap,
-  Play,
   ArrowRight,
   ExternalLink,
   Eye,
   Lock,
-  Cpu,
   LogIn,
   RefreshCw,
 } from 'lucide-react';
-import { Vexel3DCanvas } from '../components/Vexel3DCanvas';
+import { LivePipelineCard } from '../components/LivePipelineCard';
 import type { HealthCheckResponse } from '../types';
 
 interface LandingPageProps {
@@ -202,15 +197,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       id: 1,
       title: 'Alert Sources',
       badge: 'Multi-Vendor',
-      desc: 'PagerDuty, Datadog & Grafana webhooks',
+      desc: 'Ingests webhook streams from PagerDuty, Datadog & Grafana',
       icon: Activity,
-      color: '#0083ff',
+      color: '#0284c7',
     },
     {
       id: 2,
       title: 'HMAC Gateway',
       badge: '<50ms SLA',
-      desc: 'Constant-time SHA-256 cryptographic verification',
+      desc: 'Constant-time SHA-256 cryptographic verification at the perimeter',
       icon: Shield,
       color: '#10b981',
     },
@@ -218,7 +213,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       id: 3,
       title: 'Celery & Redis',
       badge: 'Zero-Loss Buffer',
-      desc: 'Row-locked deduplication & incident grouping',
+      desc: 'Row-locked deduplication & automated incident grouping',
       icon: Layers,
       color: '#8b5cf6',
     },
@@ -226,7 +221,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       id: 4,
       title: 'Dual Cold Storage',
       badge: 'AWS Production',
-      desc: 'PostgreSQL RDS queries + Amazon S3 JSON archives',
+      desc: 'Fast PostgreSQL RDS queries + immutable Amazon S3 JSON archives',
       icon: Database,
       color: '#f59e0b',
     },
@@ -234,7 +229,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <div className="public-landing-container">
-      {/* 1. Public Top Navigation */}
+      {/* 1. Spacious, High-Contrast Public Top Navigation */}
       <header className="public-navbar">
         <div className="pub-nav-left">
           <div className="pub-brand-logo">
@@ -242,7 +237,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <div className="pub-brand-text">
             <span className="pub-brand-name">
-              Signal<span style={{ color: '#0083ff' }}>Bridge</span>
+              Signal<span style={{ color: '#0284c7' }}>Bridge</span>
             </span>
             <span className="pub-brand-sub">OPERATOR CORE</span>
           </div>
@@ -295,10 +290,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </header>
 
-      {/* 2. Hero Section with 3D Blue Motion Graphic */}
+      {/* 2. Hero Section: Clear Value Narrative + Live Ingestion Pipeline Card */}
       <section className="pub-hero-section">
         <div className="pub-hero-grid">
-          {/* Left Hero Narrative */}
+          {/* Left Column: Clear Problem, Solution, and 1-Click Access */}
           <div className="pub-hero-left">
             <div className="sb-pill-badge">
               <span className="pulse-ping" />
@@ -308,23 +303,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             <h1 className="pub-hero-headline">
-              Mission-Critical Webhook Ingestion &{' '}
-              <span className="highlight-text-blue">Incident Correlation</span>
+              Stop Alert Storms.{' '}
+              <span className="highlight-text-blue">Ingest Webhooks in &lt;50ms.</span>
             </h1>
 
             <p className="pub-hero-lead">
-              A high-throughput ingestion platform engineered to eliminate alert fatigue.
-              Validates cryptographic HMAC-SHA256 signatures in under 50ms, deduplicates
-              storm surges with distributed Redis caching, correlates multi-vendor alerts into
-              actionable incidents, and cold-archives raw payloads directly to Amazon S3.
+              SignalBridge is an enterprise webhook ingestion engine engineered to eliminate on-call fatigue.
+              It validates cryptographic HMAC signatures at the edge, deduplicates burst storms with distributed
+              Redis SHA-256 caching, aggregates cascading alerts into actionable incident cases, and cold-archives
+              raw JSON payloads to Amazon S3.
             </p>
 
-            {/* Fast Access Role Portal */}
+            {/* Fast Role Access Box */}
             <div className="pub-access-box">
               <div className="pub-access-header">
-                <span className="pub-access-title">Instant Access — Choose Role to Enter Dashboard</span>
-                <span className="pill-tag font-mono" style={{ background: 'rgba(0, 131, 255, 0.1)', color: '#0083ff' }}>
-                  Pre-configured Credentials
+                <span className="pub-access-title">Instant Access — Choose Role to Launch Dashboard</span>
+                <span className="pill-tag font-mono" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7' }}>
+                  Pre-configured Accounts
                 </span>
               </div>
 
@@ -332,7 +327,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {/* 1. Demo Viewer Card */}
                 <div className="pub-role-mini-card card-viewer">
                   <div className="mini-card-head">
-                    <div className="mini-icon-box" style={{ background: 'rgba(0, 131, 255, 0.12)', color: '#0083ff' }}>
+                    <div className="mini-icon-box" style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
                       <Eye size={16} />
                     </div>
                     <div>
@@ -341,7 +336,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
                   </div>
                   <p className="mini-card-desc">
-                    Explore live incidents, correlated alerts, telemetry graphs, and Amazon S3 JSON cold archives without modifying production configs.
+                    Explore active incidents, correlated alerts, SRE Bento Grid metrics, and Amazon S3 JSON cold archives without modifying production configs.
                   </p>
                   <div className="mini-card-creds font-mono">
                     <span>User: <strong>viewer</strong></span>
@@ -353,14 +348,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     className="btn btn-primary btn-sm mini-action-btn"
                   >
                     <Eye size={13} />
-                    <span>Enter Dashboard (1-Click)</span>
+                    <span>Launch Demo Dashboard</span>
                   </button>
                 </div>
 
                 {/* 2. Lead Admin Card */}
                 <div className="pub-role-mini-card card-admin">
                   <div className="mini-card-head">
-                    <div className="mini-icon-box" style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#6366f1' }}>
+                    <div className="mini-icon-box" style={{ background: 'rgba(79, 70, 229, 0.12)', color: '#4f46e5' }}>
                       <Lock size={16} />
                     </div>
                     <div>
@@ -386,178 +381,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* SRE Trust Metrics Strip */}
-            <div className="pub-trust-row">
-              <div className="pub-trust-metric">
-                <span className="trust-val font-mono">&lt;50ms</span>
-                <span className="trust-sub">HMAC SLA Perimeter</span>
-              </div>
-              <div className="pub-trust-div" />
-              <div className="pub-trust-metric">
-                <span className="trust-val font-mono">100%</span>
-                <span className="trust-sub">Storm Deduplication</span>
-              </div>
-              <div className="pub-trust-div" />
-              <div className="pub-trust-metric">
-                <span className="trust-val font-mono">Zero-Loss</span>
-                <span className="trust-sub">Celery & Redis Buffer</span>
-              </div>
-              <div className="pub-trust-div" />
-              <div className="pub-trust-metric">
-                <span className="trust-val font-mono">Dual-Tier</span>
-                <span className="trust-sub">PostgreSQL + Amazon S3</span>
-              </div>
-            </div>
           </div>
 
-          {/* Right Hero: 3D Blue Animation & Floating Telemetry */}
+          {/* Right Column: Live Pipeline & Telemetry Card (Replaces Clunky 3D Blob) */}
           <div className="pub-hero-right">
-            <div className="pub-3d-stage">
-              <Vexel3DCanvas interactive={true} />
-
-              {/* Floating Spatial Micro-Badges */}
-              <div className="pub-float-pill float-top-left">
-                <Shield size={14} className="text-emerald-500" />
-                <span className="font-mono">HMAC-SHA256: VALID [38ms]</span>
-              </div>
-
-              <div className="pub-float-pill float-bottom-left">
-                <Database size={14} className="text-amber-500" />
-                <span className="font-mono">S3: /archives/2026/10/27.json</span>
-              </div>
-
-              <div className="pub-float-pill float-top-right">
-                <RotateCcw size={14} className="text-sky-500" />
-                <span className="font-mono">Redis Deduplication: 200 OK</span>
-              </div>
-
-              <div className="pub-float-pill float-bottom-right">
-                <Cpu size={14} className="text-indigo-500" />
-                <span className="font-mono">Celery Async ACK: &lt;12ms</span>
-              </div>
-            </div>
+            <LivePipelineCard
+              onRunSimulation={runSimulation}
+              simulationResult={simulationResult}
+              simulating={simulating}
+              apiDocsUrl={apiDocsUrl}
+            />
           </div>
         </div>
       </section>
 
-      {/* 3. Live Webhook & Incident Simulator Showcase */}
-      <section className="pub-section-card">
-        <div className="simulator-header">
-          <div>
-            <div className="sim-title">
-              <Play size={16} className="text-emerald-500" />
-              <span>Interactive Public Webhook Simulator</span>
-            </div>
-            <p className="sim-desc">
-              Test the real ingestion gateway live right now. Click any scenario below to dispatch real
-              HMAC-SHA256 webhooks to the local backend and inspect instant responses.
-            </p>
-          </div>
-
-          <a
-            href={apiDocsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-secondary btn-sm"
-          >
-            <ExternalLink size={13} />
-            Swagger API Docs
-          </a>
-        </div>
-
-        <div className="sim-buttons-grid">
-          <button
-            className="sim-btn btn-critical"
-            disabled={simulating !== null}
-            onClick={() => runSimulation('critical')}
-          >
-            <AlertOctagon size={16} />
-            <div className="btn-text">
-              <span className="btn-label">Database Pool Exhaustion</span>
-              <span className="btn-sub">PagerDuty • CRITICAL Alert</span>
-            </div>
-          </button>
-
-          <button
-            className="sim-btn btn-warning"
-            disabled={simulating !== null}
-            onClick={() => runSimulation('warning')}
-          >
-            <AlertTriangle size={16} />
-            <div className="btn-text">
-              <span className="btn-label">p99 Latency Breach</span>
-              <span className="btn-sub">Datadog • HIGH Alert</span>
-            </div>
-          </button>
-
-          <button
-            className="sim-btn btn-duplicate"
-            disabled={simulating !== null}
-            onClick={() => runSimulation('duplicate')}
-          >
-            <RotateCcw size={16} />
-            <div className="btn-text">
-              <span className="btn-label">Duplicate Alert Storm</span>
-              <span className="btn-sub">Idempotency 200 Deduplication</span>
-            </div>
-          </button>
-
-          <button
-            className="sim-btn btn-tampered"
-            disabled={simulating !== null}
-            onClick={() => runSimulation('tampered')}
-          >
-            <Shield size={16} />
-            <div className="btn-text">
-              <span className="btn-label">Tampered HMAC Attack</span>
-              <span className="btn-sub">Cryptographic 401 Defense</span>
-            </div>
-          </button>
-
-          <button
-            className="sim-btn btn-recovery"
-            disabled={simulating !== null}
-            onClick={() => runSimulation('recovery')}
-          >
-            <CheckCircle size={16} />
-            <div className="btn-text">
-              <span className="btn-label">Send Recovery Signal</span>
-              <span className="btn-sub">Auto-Resolve Incident</span>
-            </div>
-          </button>
-        </div>
-
-        {simulationResult && (
-          <div className={`sim-feedback-toast toast-${simulationResult.type}`}>
-            <div className="toast-left">
-              {simulationResult.type === 'success' && <CheckCircle size={18} className="toast-icon" />}
-              {simulationResult.type === 'info' && <RotateCcw size={18} className="toast-icon" />}
-              {simulationResult.type === 'warning' && <Shield size={18} className="toast-icon" />}
-              {simulationResult.type === 'error' && <AlertOctagon size={18} className="toast-icon" />}
-              <div>
-                <div className="toast-title">{simulationResult.title}</div>
-                <div className="toast-message">{simulationResult.message}</div>
-              </div>
-            </div>
-            {simulationResult.latencyMs !== undefined && (
-              <span className="toast-latency font-mono">
-                ⚡ {simulationResult.latencyMs}ms Gateway ACK
-              </span>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* 4. Live Architecture Flow Pipeline */}
+      {/* 3. Architecture Pipeline Flow Visualization */}
       <section className="pub-section-card">
         <div className="pipeline-header">
           <div className="pipeline-title">
-            <Zap size={16} color="#0083ff" />
-            <span>End-to-End Pipeline Architecture</span>
+            <Zap size={16} color="#0284c7" />
+            <span>End-to-End Ingestion &amp; Incident Lifecycle</span>
           </div>
           <span className="pipeline-status">
-            <span className="pulse-dot dot-ready" /> Fully Verified on AWS & Local
+            <span className="pulse-dot dot-ready" /> Verified Local &amp; AWS Deployment
           </span>
         </div>
 
@@ -594,7 +440,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 5. Four Architectural Pillars Grid */}
+      {/* 4. Four Core Architectural Pillars */}
       <section className="pub-features-grid">
         <div className="spatial-feature-card">
           <div className="spatial-card-icon" style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}>
@@ -608,7 +454,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="spatial-feature-card">
-          <div className="spatial-card-icon" style={{ color: '#0083ff', background: 'rgba(0, 131, 255, 0.1)' }}>
+          <div className="spatial-card-icon" style={{ color: '#0284c7', background: 'rgba(2, 132, 199, 0.1)' }}>
             <RotateCcw size={20} />
           </div>
           <h3 className="spatial-card-title">Distributed Idempotency</h3>
@@ -641,12 +487,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 6. Bottom Call to Action Banner */}
+      {/* 5. Bottom Call to Action Banner */}
       <section className="pub-cta-banner">
         <div className="cta-left">
           <h3 className="cta-heading">Ready to explore the Operator Control Room?</h3>
           <p className="cta-sub">
-            Log in as Demo Viewer to safely examine live alerts, or sign in as Lead Administrator for full SRE operational control.
+            Log in as Demo Viewer to examine live alert streams and S3 keys, or sign in as Lead Administrator for full SRE operational control.
           </p>
         </div>
         <div className="cta-actions">
@@ -671,12 +517,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 7. Public Footer */}
+      {/* 6. Clean Engineering Footer */}
       <footer className="pub-footer">
         <div className="footer-left">
           <div className="footer-brand">
             <span style={{ fontWeight: 800, fontSize: '14px' }}>
-              Signal<span style={{ color: '#0083ff' }}>Bridge</span>
+              Signal<span style={{ color: '#0284c7' }}>Bridge</span>
             </span>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '8px' }}>
               Production SRE Webhook Ingestion Engine

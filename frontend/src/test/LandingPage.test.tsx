@@ -3,13 +3,8 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { LandingPage } from '../views/LandingPage';
 
-// Mock WebGL / Three.js canvas in JSDOM environment
-vi.mock('../components/Vexel3DCanvas', () => ({
-  Vexel3DCanvas: () => <div data-testid="vexel-3d-canvas" className="mock-3d-canvas" />,
-}));
-
 describe('Public LandingPage Component', () => {
-  it('renders public branding, 3D stage, and fast role access without internal dashboard tools', async () => {
+  it('renders public branding, live pipeline telemetry card, and fast role access without internal dashboard tools', async () => {
     const handleOpenLogin = vi.fn();
     const handleQuickLoginAsViewer = vi.fn();
 
@@ -32,18 +27,16 @@ describe('Public LandingPage Component', () => {
 
     // Brand and headline
     expect(screen.getByText('OPERATOR CORE')).toBeInTheDocument();
-    expect(screen.getByText('Incident Correlation')).toBeInTheDocument();
+    expect(screen.getByText('Stop Alert Storms.')).toBeInTheDocument();
 
-    // 3D canvas is present
-    expect(screen.getByTestId('vexel-3d-canvas')).toBeInTheDocument();
+    // Live Pipeline Card is present
+    expect(screen.getByText('INGESTION GATEWAY TELEMETRY')).toBeInTheDocument();
+    expect(screen.getByText('P1 Database Exhaustion')).toBeInTheDocument();
 
     // Role access cards
     expect(screen.getByText('Demo Viewer')).toBeInTheDocument();
     expect(screen.getByText('Lead Administrator')).toBeInTheDocument();
-    expect(screen.getByText('Enter Dashboard (1-Click)')).toBeInTheDocument();
-
-    // Public simulator
-    expect(screen.getByText('Interactive Public Webhook Simulator')).toBeInTheDocument();
+    expect(screen.getAllByText('Launch Demo Dashboard').length).toBeGreaterThan(0);
   });
 
   it('triggers quick viewer login and admin sign in from public CTAs', async () => {
@@ -63,7 +56,7 @@ describe('Public LandingPage Component', () => {
       );
     });
 
-    const quickLoginBtn = screen.getByText('Enter Dashboard (1-Click)');
+    const quickLoginBtn = screen.getAllByText('Launch Demo Dashboard')[0];
     fireEvent.click(quickLoginBtn);
     expect(handleQuickLoginAsViewer).toHaveBeenCalledTimes(1);
 

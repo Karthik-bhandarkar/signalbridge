@@ -11,11 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@types/three": "^0.186.0",
     "lucide-react": "^1.60.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "three": "^0.186.1"
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
