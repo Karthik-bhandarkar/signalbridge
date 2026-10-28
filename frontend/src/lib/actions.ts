@@ -11,10 +11,10 @@ import { generateTraffic } from "@/lib/seed";
 export type LoginState = { error?: string };
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "");
+  const identifier = String(formData.get("username") ?? formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const user = await authenticate(email, password);
-  if (!user) return { error: "Invalid credentials. Use the demo operator shown below." };
+  const user = await authenticate(identifier, password);
+  if (!user) return { error: "Invalid username or password." };
   await startSession(user);
   redirect("/dashboard");
 }

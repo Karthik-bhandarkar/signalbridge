@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { operators } from "@/db/schema";
+import { DEMO_CREDENTIALS } from "./constants";
 
 const COOKIE = "sb_session";
 const MAX_AGE = 60 * 60 * 12;
@@ -73,21 +74,41 @@ export async function endSession() {
   store.delete(COOKIE);
 }
 
-export const DEMO_CREDENTIALS = {
-  email: "ops@signalbridge.dev",
-  password: "oncall",
-};
+export { DEMO_CREDENTIALS };
 
-export async function authenticate(email: string, password: string): Promise<SessionUser | null> {
-  const normEmail = email.toLowerCase().trim();
-  if (normEmail === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
-    return { email: normEmail, name: "Demo Operator", role: "admin" };
+export async function authenticate(identifier: string, password: string): Promise<SessionUser | null> {
+  const norm = identifier.toLowerCase().trim();
+
+  // 1. Check Demo Operator credentials
+  if (
+    (norm === "demo.operator" || norm === "demo.operator@signalbridge.io" || norm === "ops@signalbridge.dev") &&
+    (password === DEMO_CREDENTIALS.operator.password || password === "oncall" || password === "OperatorPass123!")
+  ) {
+    return {
+      email: DEMO_CREDENTIALS.operator.email,
+      name: DEMO_CREDENTIALS.operator.name,
+      role: DEMO_CREDENTIALS.operator.role,
+    };
   }
+
+  // 2. Check Demo Viewer credentials
+  if (
+    (norm === "demo.viewer" || norm === "demo.viewer@signalbridge.io") &&
+    password === DEMO_CREDENTIALS.viewer.password
+  ) {
+    return {
+      email: DEMO_CREDENTIALS.viewer.email,
+      name: DEMO_CREDENTIALS.viewer.name,
+      role: DEMO_CREDENTIALS.viewer.role,
+    };
+  }
+
+  // 3. Fallback to Drizzle operator lookup if present
   try {
     const [operator] = await db
       .select()
       .from(operators)
-      .where(eq(operators.email, normEmail))
+      .where(eq(operators.email, norm))
       .limit(1);
     if (!operator) return null;
     if (!verifyPassword(password, operator.passwordHash)) return null;

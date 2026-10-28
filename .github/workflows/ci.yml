@@ -210,5 +210,6 @@ jobs:
             echo "🗄️ [3/4] Running database migrations..."
             sleep 5
             docker compose -f docker-compose.prod.yml exec -T web python manage.py migrate --noinput || true
+            docker compose -f docker-compose.prod.yml exec -T web python manage.py seed_demo_users || true
             echo "🎉 [4/4] Automated Deployment to AWS Succeeded!"
           EOF

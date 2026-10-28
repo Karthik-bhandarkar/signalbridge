@@ -293,6 +293,13 @@ export default function LiveDashboard({
     LOW: { bg: "rgba(88, 166, 255, 0.15)", text: "#58A6FF", border: "rgba(88, 166, 255, 0.4)" },
   };
 
+  const openCount = includeSimulated
+    ? kpis.open_incidents
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
+  const criticalCount = includeSimulated
+    ? kpis.critical_open
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
+
   return (
     <div className="space-y-6" style={{ color: "#E6EAF2" }}>
       {/* Top Bar Header with Telemetry Beacon */}
@@ -383,14 +390,14 @@ export default function LiveDashboard({
           <div className="mt-3 flex items-baseline gap-2">
             <span
               className={`font-mono text-2xl font-bold ${
-                kpis.critical_open > 0 ? "text-[#F85149]" : "text-[#E6EAF2]"
+                criticalCount > 0 ? "text-[#F85149]" : "text-[#E6EAF2]"
               }`}
             >
-              {kpis.open_incidents}
+              {openCount}
             </span>
-            {kpis.critical_open > 0 && (
+            {criticalCount > 0 && (
               <span className="rounded-full bg-[#F85149]/20 px-2 py-0.5 text-[10px] font-bold text-[#F85149]">
-                {kpis.critical_open} CRITICAL
+                {criticalCount} CRITICAL
               </span>
             )}
           </div>
@@ -448,13 +455,19 @@ export default function LiveDashboard({
         <div className="xl:col-span-2 rounded-2xl border border-[#232C3D] bg-[#111722] p-5 shadow-xl flex flex-col">
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#232C3D] pb-4 mb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#E6EAF2]">
                 Active Incident Triage Feed
               </h3>
               <span className="rounded-full bg-[#161D2B] border border-[#232C3D] px-2 py-0.5 font-mono text-[10px] text-[#8B949E]">
                 {filtered.length} active
               </span>
+              <Link
+                href="/dashboard/incidents"
+                className="hidden sm:inline-flex items-center gap-1 text-[11px] font-mono text-[#4F8CFF] hover:underline"
+              >
+                <span>Full Board View →</span>
+              </Link>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">

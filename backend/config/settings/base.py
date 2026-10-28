@@ -182,6 +182,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 300.0,
         "kwargs": {"stale_minutes": 5},
     },
+    "nightly-demo-data-reset": {
+        "task": "apps.alerts.tasks.reset_demo_data_nightly",
+        "schedule": 86400.0,
+    },
 }
 
 # -----------------------------------------------------------------------------

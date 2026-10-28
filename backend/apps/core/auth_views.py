@@ -62,6 +62,23 @@ class AuthLoginAPIView(APIView):
         },
     )
     def post(self, request):
+        # 1. Rate-limiting: 5 login attempts per minute per IP
+        from apps.core.dsa.sliding_window import shared_rate_limiter
+        ip_addr = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "127.0.0.1")
+        is_allowed, rate_info = shared_rate_limiter.is_allowed(
+            key=f"auth_login:{ip_addr}",
+            limit=5,
+            window_seconds=60,
+        )
+        if not is_allowed:
+            return Response(
+                {
+                    "error": "Too many failed login attempts. Please wait 1 minute.",
+                    "retry_after": rate_info.get("retry_after", 60),
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         serializer = LoginRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -71,9 +88,29 @@ class AuthLoginAPIView(APIView):
 
         user = authenticate(request, username=username, password=password)
         if not user:
-            # Automatic bootstrap for demo operator credentials
+            # Automatic bootstrap for demo accounts
             norm_u = username.lower().strip()
-            if (norm_u in ["admin", "operator", "ops@signalbridge.dev"] and password in ["admin123", "oncall", "OperatorPass123!"]):
+            if norm_u == "demo.operator" and password == "OperatorPass!2026#Secure":
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user, _ = User.objects.get_or_create(
+                    username="demo.operator",
+                    defaults={"first_name": "Demo", "last_name": "Operator", "email": "demo.operator@signalbridge.io", "is_staff": False}
+                )
+                user.set_password(password)
+                user.save()
+                UserProfile.objects.update_or_create(user=user, defaults={"role": UserRole.OPERATOR})
+            elif norm_u == "demo.viewer" and password == "ViewerPass!2026#Secure":
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user, _ = User.objects.get_or_create(
+                    username="demo.viewer",
+                    defaults={"first_name": "Demo", "last_name": "Viewer", "email": "demo.viewer@signalbridge.io", "is_staff": False}
+                )
+                user.set_password(password)
+                user.save()
+                UserProfile.objects.update_or_create(user=user, defaults={"role": UserRole.VIEWER})
+            elif norm_u in ["admin", "operator", "ops@signalbridge.dev"] and password in ["admin123", "oncall", "OperatorPass123!"]:
                 from django.contrib.auth import get_user_model
                 User = get_user_model()
                 user, _ = User.objects.get_or_create(
@@ -154,6 +191,7 @@ class AuthMeAPIView(APIView):
                 "is_staff": user.is_staff,
                 "is_superuser": user.is_superuser,
                 "role": get_user_role(user),
+                "is_demo_user": user.username in ("demo.operator", "demo.viewer") or user.username.startswith("demo."),
             },
             "csrf_token": get_token(request),
         }, status=status.HTTP_200_OK)
