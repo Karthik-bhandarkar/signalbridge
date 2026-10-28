@@ -128,6 +128,9 @@ jobs:
         run: npm run typecheck
 
       - name: Build Next.js Application (Production Standalone)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/signalbridge_db
+          NEXT_TELEMETRY_DISABLED: 1
         run: npm run build
 
   docker-validation:
@@ -136,6 +139,9 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+
+      - name: Prepare Environment File
+        run: cp .env.example .env
 
       - name: Validate Docker Compose Configuration
         run: docker compose config
