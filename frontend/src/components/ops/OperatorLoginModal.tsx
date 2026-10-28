@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, X, CheckCircle, AlertCircle, Shield, ArrowRight } from "lucide-react";
+import { Lock, X, AlertCircle, Shield, ArrowRight, RefreshCw } from "lucide-react";
 
 interface OperatorLoginModalProps {
   isOpen: boolean;
@@ -17,8 +17,7 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
 
   if (!isOpen) return null;
 
-  async function handleLogin(e?: React.FormEvent) {
-    if (e) e.preventDefault();
+  async function performLogin(uName: string, pWord: string) {
     setLoading(true);
     setError(null);
 
@@ -43,7 +42,7 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
       const res = await fetch("/api/v1/auth/login/", {
         method: "POST",
         headers,
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: uName, password: pWord }),
       });
 
       if (!res.ok) {
@@ -52,10 +51,10 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
       }
 
       const userRes = await fetch("/api/v1/auth/me/").catch(() => null);
-      let userData = { username, role: "Operator" };
+      let userData = { username: uName, role: "Operator" };
       if (userRes && userRes.ok) {
         const data = await userRes.json();
-        userData = { username: data.username || username, role: data.role || "Operator" };
+        userData = { username: data.username || uName, role: data.role || "Operator" };
       }
 
       onSuccess(userData);
@@ -66,6 +65,17 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    performLogin(username, password);
+  }
+
+  function handleQuickDemoLogin() {
+    setUsername("admin");
+    setPassword("admin123");
+    performLogin("admin", "admin123");
   }
 
   return (
@@ -103,7 +113,7 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-3">
+        <form onSubmit={handleFormSubmit} className="space-y-3">
           <div>
             <label className="block text-[11px] font-medium uppercase tracking-wider text-[#8B949E] mb-1">
               Username / Operator ID
@@ -137,7 +147,10 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#4F8CFF] py-2.5 text-xs font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all disabled:opacity-50"
             >
               {loading ? (
-                <span>Authenticating Session...</span>
+                <>
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>Authenticating Session...</span>
+                </>
               ) : (
                 <>
                   <Lock size={14} />
@@ -148,15 +161,11 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
 
             <button
               type="button"
-              onClick={() => {
-                setUsername("admin");
-                setPassword("admin123");
-                handleLogin();
-              }}
+              onClick={handleQuickDemoLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#232C3D] bg-[#161D2B] py-2 text-xs font-medium text-[#8B949E] hover:text-[#E6EAF2] hover:border-[#4F8CFF]/40 transition-all"
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#232C3D] bg-[#161D2B] py-2.5 text-xs font-semibold text-[#4F8CFF] hover:bg-[#4F8CFF]/10 hover:border-[#4F8CFF]/50 transition-all"
             >
-              <span>Quick 1-Click Demo Operator Login</span>
+              <span>⚡ 1-Click Demo Operator Sign In (Instant Access)</span>
               <ArrowRight size={13} />
             </button>
           </div>
@@ -165,4 +174,3 @@ export default function OperatorLoginModal({ isOpen, onClose, onSuccess }: Opera
     </div>
   );
 }
-

@@ -186,9 +186,20 @@ export default function SimulatorStudio({
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#F85149]/30 bg-[#F85149]/10 px-3 py-2 text-xs text-[#F85149]">
-            <AlertCircle size={14} className="shrink-0" />
-            <span>{error}</span>
+          <div className="mb-4 rounded-xl border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-xs text-[#F85149] space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+            {error.includes("Authentication") && (
+              <button
+                type="button"
+                onClick={onRequestAuth}
+                className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#F85149]/40 bg-[#F85149]/20 py-1.5 text-xs font-semibold text-white hover:bg-[#F85149]/30 transition-all shadow-sm"
+              >
+                <span>🔑 Click here to Sign In as Demo Operator</span>
+              </button>
+            )}
           </div>
         )}
 
