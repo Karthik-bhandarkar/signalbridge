@@ -102,3 +102,4 @@ Thumbs.db
 
 
 frontend/.screenshots/
+*.tokens.json
