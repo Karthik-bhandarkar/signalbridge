@@ -73,17 +73,17 @@
   .attributes { margin-top: -7px; }
 }
 @media (max-width: 560px) {
-  .grid { width: calc(100% - 40px); row-gap: 27px; }
-  .eyebrow { font-size: 9px; letter-spacing: .15em; max-width: 40ch; }
-  .headline { font-size: clamp(34px, 9.7vw, 45px); }
-  .description { margin-top: 18px; font-size: 14px; line-height: 1.7; }
-  .actions { flex-wrap: nowrap; gap: 8px; margin-top: 23px; }
-  .actions :global(.lp-btn-lg) { flex: 1 1 auto; height: 47px; padding-inline: 12px; font-size: 9px; gap: 7px; }
-  .attributes { gap: 8px 12px; font-size: 10px; }
+  .hero { padding: calc(var(--nav-h) + 18px) 0 36px; }
+  .grid { width: calc(100% - 32px); row-gap: 22px; }
+  .eyebrow { font-size: 8.5px; letter-spacing: .14em; max-width: 100%; }
+  .headline { font-size: clamp(28px, 8.4vw, 38px); line-height: 1.08; }
+  .description { margin-top: 14px; font-size: 13.5px; line-height: 1.65; max-width: 100%; }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 22px; width: 100%; }
+  .actions :global(.ui-button) { width: 100%; min-height: 46px; padding-inline: 10px; font-size: 9.5px; justify-content: center; }
+  .attributes { gap: 8px 12px; font-size: 10px; margin-top: -2px; }
 }
-@media (max-width: 359px) {
-  .actions { flex-wrap: wrap; }
-  .actions :global(.lp-btn-lg) { flex-basis: 100%; }
+@media (max-width: 380px) {
+  .actions { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   .line > span { animation: none; transform: none; }
