@@ -49,6 +49,7 @@ services:
   # High-throughput asynchronous multi-worker WSGI entrypoint with HTTP liveness probe.
   # ---------------------------------------------------------------------------
   web:
+    image: signalbridge_backend:prod
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -108,11 +109,7 @@ services:
   # Asynchronously groups alerts, calculates hashes, and executes row-level locks.
   # ---------------------------------------------------------------------------
   celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        BUILD_ENV: production
+    image: signalbridge_backend:prod
     container_name: signalbridge_celery_worker_prod
     restart: always
     command: celery -A config.celery worker -l info --concurrency=${CELERY_CONCURRENCY:-2} -Ofair
@@ -144,11 +141,7 @@ services:
   # Dispatches periodic active monitoring checks and metrics rollup sweeps.
   # ---------------------------------------------------------------------------
   celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        BUILD_ENV: production
+    image: signalbridge_backend:prod
     container_name: signalbridge_celery_beat_prod
     restart: always
     command: celery -A config.celery beat -l info
