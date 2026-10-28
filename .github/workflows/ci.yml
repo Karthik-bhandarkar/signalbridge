@@ -169,8 +169,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "${EC2_USER}@${EC2_HOST}" 'bash -s' << 'EOF'
             set -e
-            echo "📥 [1/4] Pulling latest main branch on EC2..."
-            cd /home/ubuntu/signalbridge || cd ~/signalbridge
+            echo "📥 [1/4] Preparing repository on EC2..."
+            if [ ! -d "/home/ubuntu/signalbridge" ]; then
+              git clone https://github.com/Karthik-bhandarkar/signalbridge.git /home/ubuntu/signalbridge
+            fi
+            cd /home/ubuntu/signalbridge
             git fetch origin main
             git reset --hard origin/main
             echo "🐳 [2/4] Building and launching updated containers..."
