@@ -157,7 +157,9 @@ export default function LiveDashboard({
         setStreamStatus("polling");
       };
     } catch {
-      setStreamStatus("polling");
+      // EventSource unavailable or errored synchronously
+      const timer = setTimeout(() => setStreamStatus("polling"), 0);
+      return () => clearTimeout(timer);
     }
 
     return () => {
@@ -628,3 +630,4 @@ export default function LiveDashboard({
     </div>
   );
 }
+
