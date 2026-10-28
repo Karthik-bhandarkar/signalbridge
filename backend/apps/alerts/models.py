@@ -120,6 +120,32 @@ class Incident(TimeStampedUUIDModel):
         help_text="Summary of root cause analysis and resolution actions taken."
     )
 
+    acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when incident was acknowledged by an operator."
+    )
+
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when incident was resolved by an operator."
+    )
+
+    is_simulated = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Flag indicating synthetic or simulator alert."
+    )
+
+    source_slug = models.CharField(
+        max_length=100,
+        default="",
+        blank=True,
+        db_index=True,
+        help_text="Originating webhook source slug."
+    )
+
     class Meta:
         verbose_name = "Incident"
         verbose_name_plural = "Incidents"
@@ -232,6 +258,12 @@ class Alert(TimeStampedUUIDModel):
         max_length=255,
         db_index=True,
         help_text="Correlation key used to group this alert with similar active incidents."
+    )
+
+    is_simulated = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Flag indicating synthetic or simulator alert."
     )
 
     # -----------------------------------------------------------------------------

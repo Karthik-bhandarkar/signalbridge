@@ -174,7 +174,9 @@ class IncidentAcknowledgeAPIView(APIView):
 
                 old_status = incident.status
                 incident.status = Incident.IncidentStatus.ACKNOWLEDGED
-                incident.save(update_fields=["status", "updated_at"])
+                if not incident.acknowledged_at:
+                    incident.acknowledged_at = timezone.now()
+                incident.save(update_fields=["status", "acknowledged_at", "updated_at"])
 
                 raw_actor = serializer.validated_data.get("actor")
                 actor = request.user.username if (request.user.is_authenticated and (not raw_actor or raw_actor == "operator")) else (raw_actor or "operator")
@@ -264,7 +266,8 @@ class IncidentResolveAPIView(APIView):
 
                 incident.status = Incident.IncidentStatus.RESOLVED
                 incident.resolution_notes = resolution_notes
-                incident.save(update_fields=["status", "resolution_notes", "updated_at"])
+                incident.resolved_at = timezone.now()
+                incident.save(update_fields=["status", "resolved_at", "resolution_notes", "updated_at"])
 
                 raw_actor = serializer.validated_data.get("actor")
                 actor = request.user.username if (request.user.is_authenticated and (not raw_actor or raw_actor == "operator")) else (raw_actor or "operator")
@@ -312,7 +315,8 @@ class IncidentReopenAPIView(APIView):
 
                 incident.status = Incident.IncidentStatus.OPEN
                 incident.last_seen_at = timezone.now()
-                incident.save(update_fields=["status", "last_seen_at", "updated_at"])
+                incident.resolved_at = None
+                incident.save(update_fields=["status", "last_seen_at", "resolved_at", "updated_at"])
 
                 raw_actor = serializer.validated_data.get("actor")
                 actor = request.user.username if (request.user.is_authenticated and (not raw_actor or raw_actor == "operator")) else (raw_actor or "operator")

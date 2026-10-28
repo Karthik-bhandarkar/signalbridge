@@ -229,7 +229,8 @@ def correlate_alert_and_incident(
                 incident.status = Incident.IncidentStatus.OPEN
                 incident.alert_count += 1
                 incident.last_seen_at = now
-                incident.save(update_fields=["status", "alert_count", "last_seen_at", "updated_at"])
+                incident.resolved_at = None
+                incident.save(update_fields=["status", "alert_count", "last_seen_at", "resolved_at", "updated_at"])
 
                 IncidentEvent.objects.create(
                     incident=incident,
@@ -247,12 +248,22 @@ def correlate_alert_and_incident(
             else:
                 # CREATE FRESH INCIDENT:
                 is_new_incident = True
+                is_sim = bool(
+                    (payload and getattr(payload, "is_simulated", False))
+                    or (source and getattr(source, "slug", "") == "simulator")
+                    or alert_data.get("source") == "simulator"
+                    or alert_data.get("is_simulated") is True
+                )
+                src_slug = (source.slug if source else "") or alert_data.get("source", "")
+
                 incident = Incident.objects.create(
                     service_name=service_name,
                     fingerprint=fingerprint,
                     status=Incident.IncidentStatus.OPEN,
                     severity=severity,
                     alert_count=1,
+                    is_simulated=is_sim,
+                    source_slug=src_slug,
                 )
                 IncidentEvent.objects.create(
                     incident=incident,
@@ -313,6 +324,12 @@ def correlate_alert_and_incident(
         # ---------------------------------------------------------------------
         # STEP 4: PERSIST DURABLE ALERT RECORD
         # ---------------------------------------------------------------------
+        is_sim = bool(
+            (payload and getattr(payload, "is_simulated", False))
+            or (source and getattr(source, "slug", "") == "simulator")
+            or alert_data.get("source") == "simulator"
+            or alert_data.get("is_simulated") is True
+        )
         alert = Alert.objects.create(
             payload=payload,
             source=source,
@@ -325,6 +342,7 @@ def correlate_alert_and_incident(
             severity=severity,
             title=title,
             description=description,
+            is_simulated=is_sim,
             raw_metadata=alert_data,
         )
 

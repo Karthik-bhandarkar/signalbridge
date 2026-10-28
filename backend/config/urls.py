@@ -55,7 +55,9 @@ def root_health_view(request):
     })
 
 
-from apps.core.health_views import HealthLiveAPIView, HealthReadyAPIView
+from apps.core.health_views import HealthLiveAPIView, HealthReadyAPIView, SystemHealthDiagnosticAPIView
+from apps.alerts.public_views import PublicOverviewAPIView, PublicIncidentListAPIView
+from apps.webhooks.simulator_views import SimulatorDispatchAPIView
 from apps.core.auth_views import (
     AuthLoginAPIView,
     AuthLogoutAPIView,
@@ -76,6 +78,8 @@ from apps.webhooks.views import (
 urlpatterns = [
     # 1. ROOT HEALTH & METADATA
     path("", root_health_view, name="root_health"),
+    path("api/health/", SystemHealthDiagnosticAPIView.as_view(), name="system-health"),
+    path("api/health", SystemHealthDiagnosticAPIView.as_view(), name="system-health-noslash"),
     path("health/live/", HealthLiveAPIView.as_view(), name="health-live"),
     path("health/ready/", HealthReadyAPIView.as_view(), name="health-ready"),
 
@@ -115,6 +119,13 @@ urlpatterns = [
 
     # Outbound Notifications
     path("api/v1/notifications/", include("apps.notifications.urls", namespace="notifications")),
+
+    # Public Unauthenticated Telemetry & Incident Feed
+    path("api/v1/public/overview/", PublicOverviewAPIView.as_view(), name="public-overview"),
+    path("api/v1/public/incidents/", PublicIncidentListAPIView.as_view(), name="public-incidents"),
+
+    # Live Event Simulator & Ingestion Studio
+    path("api/v1/simulator/dispatch/", SimulatorDispatchAPIView.as_view(), name="simulator-dispatch"),
 
     # Analytics & Operational Performance Metrics
     path("api/v1/analytics/", include("apps.analytics.urls", namespace="analytics")),

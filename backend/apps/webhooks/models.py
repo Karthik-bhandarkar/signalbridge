@@ -163,6 +163,12 @@ class IngestedPayload(TimeStampedUUIDModel):
         help_text="Durability status of raw payload copy in cold storage (S3/S3Mock)."
     )
 
+    is_simulated = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Flag indicating synthetic or simulator payload."
+    )
+
     # -----------------------------------------------------------------------------
     # 4. PROCESSING LIFECYCLE & RETRY TRACKING
     # -----------------------------------------------------------------------------
