@@ -87,6 +87,17 @@ class PublicOverviewAPIView(APIView):
         total_alerts = Alert.objects.count()
         correlation_ratio = round(total_alerts / max(1, total_incidents), 2)
 
+        # 5b. Replay suppression rate from IngestionMetric / alerts:
+        from apps.analytics.models import IngestionMetric
+        from django.db.models import Sum
+        metric_agg = IngestionMetric.objects.aggregate(
+            rec=Sum("total_received"),
+            dup=Sum("total_duplicates")
+        )
+        rec = metric_agg.get("rec") or 0
+        dup = metric_agg.get("dup") or 0
+        replay_suppression_rate = round((dup / rec) * 100.0, 1) if rec > 0 else 0.0
+
         # 6. Overall System Health Status:
         if critical_open > 0:
             system_status = "critical"
@@ -107,6 +118,7 @@ class PublicOverviewAPIView(APIView):
             "mttr_minutes": mttr_minutes,
             "mtta_minutes": mtta_minutes,
             "correlation_ratio": correlation_ratio,
+            "replay_suppression_rate_pct": replay_suppression_rate,
             "timestamp": now.isoformat(),
         }, status=status.HTTP_200_OK)
 
@@ -129,8 +141,15 @@ class PublicIncidentListAPIView(APIView):
         responses={200: OpenApiResponse(description="Sanitized incident records.")},
     )
     def get(self, request):
+        from django.utils.dateparse import parse_datetime
         status_param = request.query_params.get("status")
         queryset = Incident.objects.all().order_by("-last_seen_at")
+
+        since_param = request.query_params.get("since")
+        if since_param:
+            since_dt = parse_datetime(since_param)
+            if since_dt:
+                queryset = queryset.filter(updated_at__gte=since_dt)
 
         if status_param:
             queryset = queryset.filter(status=status_param.upper())
@@ -171,3 +190,70 @@ class PublicIncidentListAPIView(APIView):
             })
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+
+
+class PublicIncidentDetailAPIView(APIView):
+    """
+    Public safe incident detail endpoint including safe timeline events and correlated alert summaries.
+    No internal operator emails or S3 object credentials are exposed.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, pk):
+        try:
+            inc = Incident.objects.get(pk=pk)
+        except (Incident.DoesNotExist, ValueError):
+            return Response({"error": "Incident not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        dur = 0.0
+        if inc.resolved_at and inc.first_seen_at:
+            dur = round((inc.resolved_at - inc.first_seen_at).total_seconds(), 1)
+        elif inc.first_seen_at and inc.last_seen_at:
+            dur = round((inc.last_seen_at - inc.first_seen_at).total_seconds(), 1)
+
+        # Safe correlated alerts summary:
+        alerts_data = [
+            {
+                "id": str(a.id),
+                "title": a.title,
+                "severity": a.severity,
+                "service_name": a.service_name,
+                "fingerprint": a.fingerprint,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in inc.alerts.all()[:20]
+        ]
+
+        # Safe chronological timeline events:
+        events_data = [
+            {
+                "id": str(ev.id),
+                "event_type": ev.event_type,
+                "description": ev.description,
+                "actor": getattr(ev, "actor", "system"),
+                "created_at": ev.created_at.isoformat() if ev.created_at else None,
+            }
+            for ev in inc.events.all()[:30]
+        ]
+
+        return Response({
+            "id": str(inc.id),
+            "service_name": inc.service_name,
+            "fingerprint": inc.fingerprint,
+            "status": inc.status,
+            "severity": inc.severity,
+            "alert_count": inc.alert_count,
+            "source_slug": inc.source_slug,
+            "is_simulated": inc.is_simulated,
+            "first_seen_at": inc.first_seen_at.isoformat() if inc.first_seen_at else None,
+            "last_seen_at": inc.last_seen_at.isoformat() if inc.last_seen_at else None,
+            "acknowledged_at": inc.acknowledged_at.isoformat() if inc.acknowledged_at else None,
+            "resolved_at": inc.resolved_at.isoformat() if inc.resolved_at else None,
+            "resolution_notes": inc.resolution_notes,
+            "duration_seconds": dur,
+            "alerts": alerts_data,
+            "events": events_data,
+        }, status=status.HTTP_200_OK)

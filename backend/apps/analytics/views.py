@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -154,3 +154,71 @@ class IngestionMetricSummaryAPIView(APIView):
 
         serializer = IngestionSummarySerializer(summary_data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+class OperationalKPIAPIView(APIView):
+    """
+    Operator and Dashboard KPI Endpoint.
+    Returns live dynamic metrics:
+      - Deliveries (24h)
+      - Open Incidents & Critical Count
+      - Replay Suppression Rate (%)
+      - Mean Time to Resolution (MTTR, minutes)
+      - Active Alerts
+      - Correlation Ratio
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        now = timezone.now()
+        day_ago = now - datetime.timedelta(hours=24)
+
+        from apps.alerts.models import Incident, Alert
+        from apps.webhooks.models import IngestedPayload
+
+        deliveries_24h = IngestedPayload.objects.filter(created_at__gte=day_ago).count()
+        deliveries_total = IngestedPayload.objects.count()
+
+        open_incidents = Incident.objects.filter(status=Incident.IncidentStatus.OPEN).count()
+        critical_open = Incident.objects.filter(
+            status=Incident.IncidentStatus.OPEN,
+            severity=Incident.SeverityLevel.CRITICAL
+        ).count()
+        ack_incidents = Incident.objects.filter(status=Incident.IncidentStatus.ACKNOWLEDGED).count()
+
+        resolved_incidents = Incident.objects.filter(
+            status=Incident.IncidentStatus.RESOLVED,
+            resolved_at__isnull=False
+        )
+        mttr_durations = [
+            (inc.resolved_at - inc.first_seen_at).total_seconds() / 60.0
+            for inc in resolved_incidents
+            if inc.resolved_at and inc.first_seen_at and inc.resolved_at >= inc.first_seen_at
+        ]
+        mttr_minutes = round(sum(mttr_durations) / len(mttr_durations), 1) if mttr_durations else 0.0
+
+        metric_agg = IngestionMetric.objects.aggregate(
+            rec=Sum("total_received"),
+            dup=Sum("total_duplicates")
+        )
+        rec = metric_agg.get("rec") or 0
+        dup = metric_agg.get("dup") or 0
+        replay_rate = round((dup / rec) * 100.0, 1) if rec > 0 else 0.0
+
+        active_alerts = Alert.objects.filter(
+            incident__status__in=[Incident.IncidentStatus.OPEN, Incident.IncidentStatus.ACKNOWLEDGED]
+        ).count()
+
+        return Response({
+            "deliveries_24h": deliveries_24h,
+            "deliveries_total": deliveries_total,
+            "open_incidents": open_incidents,
+            "critical_open": critical_open,
+            "acknowledged_incidents": ack_incidents,
+            "replay_suppression_rate_pct": replay_rate,
+            "mttr_minutes": mttr_minutes,
+            "active_alerts": active_alerts,
+            "timestamp": now.isoformat(),
+        }, status=status.HTTP_200_OK)

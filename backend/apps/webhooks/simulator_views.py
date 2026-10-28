@@ -176,6 +176,13 @@ class SimulatorDispatchAPIView(APIView):
             "incident_severity": incident_obj.severity,
             "alert_count": incident_obj.alert_count,
             "is_new_incident": is_new,
+            "message": "Live simulated webhook processed through pipeline.",
+            "pipeline_timings_ms": {
+                "hmac_verified_ms": max(0.1, t_hmac_ms),
+                "dedup_checked_ms": max(0.1, t_dedup_ms),
+                "correlated_ms": max(0.1, t_corr_ms),
+                "total_pipeline_ms": max(0.5, total_ms),
+            },
             "timings": {
                 "hmac_verified": is_valid_sig,
                 "hmac_verification_ms": max(0.1, t_hmac_ms),
@@ -186,3 +193,4 @@ class SimulatorDispatchAPIView(APIView):
                 "total_duration_ms": max(0.5, total_ms),
             },
         }, status=status.HTTP_200_OK)
+

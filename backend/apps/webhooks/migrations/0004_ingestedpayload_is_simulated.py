@@ -14,3 +14,4 @@ class Migration(migrations.Migration):
             field=models.BooleanField(db_index=True, default=False, help_text='Flag indicating synthetic or simulator payload.'),
         ),
     ]
+

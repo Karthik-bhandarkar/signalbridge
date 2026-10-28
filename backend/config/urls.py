@@ -56,7 +56,8 @@ def root_health_view(request):
 
 
 from apps.core.health_views import HealthLiveAPIView, HealthReadyAPIView, SystemHealthDiagnosticAPIView
-from apps.alerts.public_views import PublicOverviewAPIView, PublicIncidentListAPIView
+from apps.alerts.public_views import PublicOverviewAPIView, PublicIncidentListAPIView, PublicIncidentDetailAPIView
+from apps.alerts.stream_views import LiveEventStreamAPIView
 from apps.webhooks.simulator_views import SimulatorDispatchAPIView
 from apps.core.auth_views import (
     AuthLoginAPIView,
@@ -121,8 +122,11 @@ urlpatterns = [
     path("api/v1/notifications/", include("apps.notifications.urls", namespace="notifications")),
 
     # Public Unauthenticated Telemetry & Incident Feed
+    path("api/v1/stream/", LiveEventStreamAPIView.as_view(), name="live-stream-v1"),
+    path("api/stream/", LiveEventStreamAPIView.as_view(), name="live-stream"),
     path("api/v1/public/overview/", PublicOverviewAPIView.as_view(), name="public-overview"),
     path("api/v1/public/incidents/", PublicIncidentListAPIView.as_view(), name="public-incidents"),
+    path("api/v1/public/incidents/<uuid:pk>/", PublicIncidentDetailAPIView.as_view(), name="public-incident-detail"),
 
     # Live Event Simulator & Ingestion Studio
     path("api/v1/simulator/dispatch/", SimulatorDispatchAPIView.as_view(), name="simulator-dispatch"),
