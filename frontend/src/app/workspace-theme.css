@@ -1,0 +1,216 @@
+/* Shared SignalBridge workspace theme.
+   Scoped to the real console, login and documentation routes so marketing
+   effects never interfere with data-dense operational screens. */
+.ops-app, .ops-login, .sb-docs-page {
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  color-scheme: dark;
+}
+
+/* Console chrome */
+.ops-sidebar {
+  background: var(--surface-sidebar);
+  border-color: var(--border-subtle);
+}
+.ops-sidebar-top, .ops-user { border-color: var(--border-subtle); }
+.ops-sidebar-top a, .ops-sidebar-top .sb-brand { color: var(--text-primary); }
+.ops-sidebar-top .sb-brand-period, .sb-docs-page .sb-brand-period { color: var(--brand-link); }
+.ops-workspace-select, .ops-sidebar-status {
+  background: var(--surface-inset);
+  border-color: var(--border-default);
+}
+.ops-workspace-icon { background: var(--surface-elevated); border-color: var(--border-default); color: var(--brand-link); }
+.ops-workspace-select strong, .ops-user strong { color: var(--text-primary); }
+.ops-workspace-select small, .ops-user small, .ops-sidebar-status p { color: var(--text-muted); }
+.ops-nav-label { color: var(--text-muted); }
+.ops-nav-link { color: var(--text-secondary); }
+.ops-nav-link:hover { background: var(--surface-hover); color: var(--text-primary); }
+.ops-nav-link.active { color: var(--text-primary); background: var(--surface-selected); border-color: var(--border-default); }
+.ops-nav-link.active::before { background: var(--brand-violet); }
+.ops-nav-count { background: var(--surface-inset); border-color: var(--border-default); color: var(--status-danger); }
+.ops-sidebar-status > span { color: var(--status-success); }
+.ops-avatar { background: var(--surface-elevated); border-color: var(--border-default); color: var(--text-primary); }
+.ops-signout { color: var(--text-muted); }
+.ops-signout:hover { color: var(--text-primary); background: var(--surface-hover); }
+.ops-topbar { background: rgba(30, 21, 52, .94); border-color: var(--border-subtle); }
+.ops-breadcrumb, .ops-breadcrumb .ops-crumb-muted { color: var(--text-muted); }
+.ops-breadcrumb strong { color: var(--text-primary); }
+.ops-search { background: var(--surface-inset); border-color: var(--border-default); }
+.ops-search > svg, .ops-search input, .ops-search kbd { color: var(--text-secondary); }
+.ops-search input::placeholder { color: var(--text-muted); opacity: 1; }
+.ops-search kbd { background: var(--surface-elevated); border-color: var(--border-default); }
+.ops-refresh, .ops-icon-menu {
+  background: var(--surface-elevated);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+.ops-refresh:hover, .ops-icon-menu:hover { color: var(--text-primary); border-color: var(--brand-link); }
+.ops-mobile-backdrop { background: rgba(10, 5, 23, .72); }
+.ops-page-intro h1 { color: var(--text-primary); }
+.ops-page-intro p { color: var(--text-secondary); }
+.ops-page-intro-status {
+  background: var(--status-success-bg);
+  border-color: var(--status-success-border);
+  color: var(--status-success);
+}
+.ops-page-intro-status[data-critical="true"] {
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger);
+}
+.ops-button {
+  border-color: rgba(230, 200, 255, .45);
+  background: var(--grad-btn);
+  color: #fff;
+  font-weight: 600;
+}
+.ops-button:hover { background: var(--grad-btn-hover); }
+.ops-button:disabled { opacity: .58; cursor: wait; }
+.ops-inline-button {
+  background: var(--surface-elevated);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.ops-inline-button:hover { background: var(--surface-hover); border-color: var(--brand-link); color: var(--text-primary); }
+
+/* Existing dashboard pages use utility classes. These scoped mappings keep
+   their markup and server actions intact while retiring the separate light
+   palette. The selectors are intentionally limited to the workspace. */
+.ops-app [class~="bg-white"] { background-color: var(--surface-panel); }
+.ops-app [class~="bg-[#f8fafc]"], .ops-app [class~="bg-[#f0f3f7]"] { background-color: var(--surface-inset); }
+.ops-app [class~="bg-[#0f172a]"] { background-color: var(--surface-selected); }
+.ops-app [class~="bg-[#0284c7]"] { background-color: #7350c9; }
+.ops-app [class~="border-[#e2e8f0]"], .ops-app [class~="border-[#f1f5f9]"] { border-color: var(--border-subtle); }
+.ops-app [class~="ring-white"] { --tw-ring-color: var(--surface-panel); }
+.ops-app [class~="text-[#0f172a]"], .ops-app [class~="text-[#334155]"] { color: var(--text-primary); }
+.ops-app [class~="text-[#475569]"], .ops-app [class~="text-[#51627b]"], .ops-app [class~="text-[#657991]"] { color: var(--text-secondary); }
+.ops-app [class~="text-[#64748b]"], .ops-app [class~="text-[#8390a3]"], .ops-app [class~="text-[#94a3b8]"],
+.ops-app [class~="text-[#9aa7b8]"], .ops-app [class~="text-[#cbd5e1]"] { color: var(--text-muted); }
+.ops-app [class~="text-[#0284c7]"], .ops-app [class~="text-[#6285b5]"] { color: var(--brand-link); }
+.ops-app [class~="hover:text-[#0284c7]"]:hover, .ops-app [class~="hover:text-[#6285b5]"]:hover { color: var(--text-primary); }
+.ops-app [class~="hover:border-[#0284c7]"]:hover { border-color: var(--brand-link); }
+.ops-app [class~="hover:bg-[#f8fafc]"]:hover, .ops-app [class~="hover:bg-[#fafbfc]"]:hover,
+.ops-app [class~="hover:bg-slate-100"]:hover { background-color: var(--surface-hover); }
+.ops-app [class~="hover:bg-[#1e293b]"]:hover, .ops-app [class~="hover:bg-[#0369a1]"]:hover { background-color: var(--surface-selected); }
+.ops-app main th { background: var(--surface-inset); color: var(--text-muted); }
+.ops-app main tr, .ops-app main section, .ops-app main > div > div { box-shadow: none; }
+.ops-app input:not([type="hidden"]), .ops-app select, .ops-app textarea {
+  background: var(--surface-inset);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+.ops-app input::placeholder, .ops-app textarea::placeholder { color: var(--text-placeholder); opacity: 1; }
+.ops-app a:focus-visible, .ops-app button:focus-visible, .ops-app input:focus-visible,
+.ops-app select:focus-visible, .ops-app textarea:focus-visible,
+.ops-login :is(a, button, input):focus-visible, .sb-docs-page :is(a, button, input):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* Semantic status colors always accompany an explicit text label. */
+.ops-app [class~="bg-rose-50"], .ops-app [class~="bg-rose-100"] { background-color: var(--status-danger-bg); }
+.ops-app [class~="border-rose-200"], .ops-app [class~="border-rose-300"] { border-color: var(--status-danger-border); }
+.ops-app [class~="text-rose-600"], .ops-app [class~="text-rose-700"], .ops-app [class~="text-rose-800"] { color: var(--status-danger); }
+.ops-app [class~="bg-amber-50"], .ops-app [class~="bg-amber-100"] { background-color: var(--status-warning-bg); }
+.ops-app [class~="border-amber-200"], .ops-app [class~="border-amber-300"] { border-color: var(--status-warning-border); }
+.ops-app [class~="text-amber-600"], .ops-app [class~="text-amber-700"], .ops-app [class~="text-amber-800"] { color: var(--status-warning); }
+.ops-app [class~="bg-emerald-50"], .ops-app [class~="bg-emerald-100"] { background-color: var(--status-success-bg); }
+.ops-app [class~="border-emerald-200"], .ops-app [class~="border-emerald-300"] { border-color: var(--status-success-border); }
+.ops-app [class~="text-emerald-600"], .ops-app [class~="text-emerald-700"], .ops-app [class~="text-emerald-800"] { color: var(--status-success); }
+.ops-app [class~="bg-sky-50"], .ops-app [class~="bg-sky-100"], .ops-app [class~="bg-slate-50"] { background-color: var(--status-info-bg); }
+.ops-app [class~="border-sky-200"], .ops-app [class~="border-sky-300"], .ops-app [class~="border-slate-200"] { border-color: var(--status-info-border); }
+.ops-app [class~="text-sky-700"], .ops-app [class~="text-sky-800"], .ops-app [class~="text-slate-600"] { color: var(--status-info); }
+.ops-app [class~="hover:bg-rose-100"]:hover { background: var(--status-danger-border); }
+.ops-app [class~="hover:bg-amber-100"]:hover { background: var(--status-warning-border); }
+.ops-app [class~="hover:bg-emerald-100"]:hover { background: var(--status-success-border); }
+.ops-app [class~="hover:text-emerald-600"]:hover { color: var(--status-success); }
+.ops-app [class~="hover:text-amber-600"]:hover { color: var(--status-warning); }
+.ops-app [class~="hover:border-emerald-500"]:hover { border-color: var(--status-success-border); }
+.ops-app [class~="hover:border-amber-500"]:hover { border-color: var(--status-warning-border); }
+.ops-scroll::-webkit-scrollbar-thumb { background: var(--border-default); }
+
+/* Keep long-form technical examples legible and horizontally scrollable on phones. */
+.sb-docs-page .sb-docs-content .sb-codeblock pre { font-size: 11px; line-height: 1.8; overflow-x: auto; }
+.ops-search-toggle { display: none; }
+@media (max-width: 650px) {
+  .ops-search-toggle { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 7px; border: 1px solid var(--border-default); background: var(--surface-elevated); color: var(--text-primary); }
+  .ops-search.is-open { display: flex; position: absolute; top: calc(100% + 8px); left: 16px; width: calc(100% - 32px); margin: 0; padding: 10px 12px; box-shadow: var(--sh-md); z-index: 30; }
+  .ops-search.is-open input { font-size: 13px; }
+}
+
+/* Payload dialog — no light overlay on a dark workspace. */
+.ops-payload-trigger, .ops-payload-dialog footer button {
+  background: var(--surface-inset); border-color: var(--border-default); color: var(--text-secondary);
+}
+.ops-payload-trigger:hover { color: var(--text-primary); border-color: var(--brand-link); }
+.ops-payload-dialog { background: var(--surface-panel); border-color: var(--border-default); color: var(--text-primary); }
+.ops-payload-dialog::backdrop { background: rgba(10, 5, 23, .75); }
+.ops-payload-dialog header > div, .ops-payload-dialog p, .ops-payload-dialog footer { color: var(--text-secondary); }
+.ops-payload-dialog header > button { background: var(--surface-elevated); color: var(--text-primary); }
+.ops-payload-dialog pre { background: var(--surface-inset); border-color: var(--border-default); color: var(--text-secondary); }
+
+/* Sign-in */
+.ops-login-story { background: var(--surface-sidebar); color: var(--text-primary); }
+.ops-login-story::before { background: radial-gradient(ellipse 70% 60% at 50% 70%, rgba(169,116,255,.2), transparent 85%); }
+.ops-login-story-copy p, .ops-login-story-bottom { color: var(--text-secondary); }
+.ops-login-form { background: var(--surface-canvas); }
+.ops-login-back, .ops-login-form p, .ops-login-fields label { color: var(--text-secondary); }
+.ops-login-fields input { background: var(--surface-panel); border-color: var(--border-default); color: var(--text-primary); }
+.ops-login-fields input:focus { border-color: var(--brand-focus); box-shadow: 0 0 0 3px rgba(169,116,255,.2); }
+.ops-login-demo { background: var(--surface-panel); border-color: var(--border-default); }
+.ops-login-demo strong, .ops-login-demo p { color: var(--text-secondary); }
+.ops-login-error { background: var(--status-danger-bg); border-color: var(--status-danger-border); color: var(--status-danger) !important; }
+
+/* Documentation: restrained surfaces and stronger long-form contrast. */
+.sb-docs-page { --ink: var(--text-primary); --muted: var(--text-secondary); --paper: var(--surface-canvas); --surface: var(--surface-panel); --line: var(--border-default); --blue: var(--brand-link); }
+.sb-docs-header { background: rgba(30,21,52,.96); border-color: var(--border-subtle); backdrop-filter: blur(14px); }
+.sb-docs-header > .sb-container > span { color: var(--text-muted); border-color: var(--border-default); }
+.sb-docs-page .sb-brand, .sb-docs-bottom .sb-brand { color: var(--text-primary); }
+.sb-docs-page .sb-eyebrow { color: var(--brand-link); }
+.sb-docs-page .sb-eyebrow::before { background: var(--brand-violet); }
+.sb-docs-page .sb-heading, .sb-docs-h2 { color: var(--text-primary); }
+.sb-docs-page .sb-copy, .sb-docs-body, .sb-docs-list li, .sb-docs-endpoints p { color: var(--text-secondary); }
+.sb-docs-sidebar > .sb-text-link, .sb-docs-sidebar nav a { color: var(--text-secondary); }
+.sb-docs-sidebar nav a:hover, .sb-docs-page .sb-text-link:hover { color: var(--brand-link); }
+.sb-docs-callout { background: var(--surface-panel); border-color: var(--border-default); color: var(--text-secondary); }
+.sb-docs-endpoints, .sb-docs-policy { background: var(--surface-panel); border-color: var(--border-default); }
+.sb-docs-endpoints article, .sb-docs-policy > div { border-color: var(--border-subtle); }
+.sb-docs-endpoint-head > span { color: var(--status-info); background: var(--status-info-bg); border-color: var(--status-info-border); }
+.sb-docs-endpoint-head code, .sb-docs-endpoints h3 { color: var(--text-primary); }
+.sb-docs-endpoint-head a, .sb-docs-endpoints small, .sb-docs-policy > div, .sb-docs-policy code { color: var(--text-secondary); }
+.sb-docs-list svg { color: var(--status-success); }
+.sb-docs-bottom { border-color: var(--border-subtle); color: var(--text-muted); }
+.sb-docs-page .sb-codeblock { background: var(--surface-panel); border-color: var(--border-default); color: var(--text-secondary); }
+.sb-docs-page .sb-codeblock-top { background: var(--surface-inset); border-color: var(--border-subtle); color: var(--text-secondary); }
+.sb-docs-page .sb-codeblock pre { background: var(--surface-panel); color: var(--text-secondary); }
+.sb-docs-page .sb-codeblock button { background: var(--surface-elevated); border-color: var(--border-default); color: var(--text-primary); }
+.sb-docs-page .sb-action { --button-bg: var(--surface-selected); --button-fg: #fff; --disc-bg: var(--surface-elevated); --disc-fg: #fff; }
+
+/* Tactile card motion & hover illumination */
+.ui-metric-card {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+}
+.ui-metric-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(169, 116, 255, 0.5) !important;
+  box-shadow: 0 16px 32px -10px rgba(9, 3, 30, 0.6), 0 0 20px -4px rgba(169, 116, 255, 0.22);
+}
+.ops-scroll table tr:hover {
+  background: var(--surface-hover) !important;
+}
+.ops-inline-button {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, box-shadow 0.18s ease;
+}
+.ops-inline-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+.ops-inline-button:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-sidebar, .ops-nav-link, .ops-button, .ops-login-fields input { transition: none; }
+}

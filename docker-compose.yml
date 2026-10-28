@@ -145,6 +145,26 @@ services:
 # Persistent Docker Volumes
 # Data persists on the host machine even when containers are stopped/removed.
 # -----------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # 7. Next.js 16 Webhook & Incident Command Center UI
+  # High-throughput frontend with live telemetry, SSR & operator dashboard.
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: signalbridge_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-signalbridge_db}
+    depends_on:
+      - web
+    networks:
+      - signalbridge_network
+
 volumes:
   postgres_data:
     name: signalbridge_postgres_data

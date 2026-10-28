@@ -95,3 +95,10 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+.next/
+**/.next/
+*.tsbuildinfo
+
+
+frontend/.screenshots/

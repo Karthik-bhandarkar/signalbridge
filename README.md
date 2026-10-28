@@ -2,8 +2,8 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.13-blue.svg)](https://python.org)
 [![Django 5.1](https://img.shields.io/badge/django-5.1-092E20.svg)](https://djangoproject.com)
-[![React 19](https://img.shields.io/badge/frontend-React%2019%20%2B%20TypeScript-61DAFB.svg)](https://react.dev)
-[![Vite](https://img.shields.io/badge/bundler-Vite%208-646CFF.svg)](https://vitejs.dev)
+[![Next.js 16](https://img.shields.io/badge/frontend-Next.js%2016%20%2B%20React%2019-000000.svg)](https://nextjs.org)
+[![Tailwind CSS 4](https://img.shields.io/badge/styling-Tailwind%20CSS%204-38BDF8.svg)](https://tailwindcss.com)
 [![PostgreSQL 16](https://img.shields.io/badge/database-PostgreSQL%2016-336791.svg)](https://postgresql.org)
 [![Redis 7](https://img.shields.io/badge/broker%20%26%20cache-Redis%207-DC382D.svg)](https://redis.io)
 [![Celery 5.4](https://img.shields.io/badge/tasks-Celery%205.4-37814A.svg)](https://docs.celeryq.dev)
@@ -11,6 +11,12 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 SignalBridge is an incident-response platform that accepts authenticated webhook events and actively monitors configured APIs. It deduplicates repeated deliveries, correlates distinct related alerts into incidents, processes work asynchronously with durable recovery, tracks archive and notification outcomes, and provides a secure operator dashboard for investigating and resolving incidents.
+
+---
+
+## Live Deployment
+
+Live deployment: NOT VERIFIED — deployment URL must be located or configured.
 
 ---
 
@@ -130,7 +136,7 @@ npm install
 npm run dev
 ```
 
-Visit the dashboard at `http://localhost:5173` and log in with your superuser credentials.
+Visit the dashboard at `http://localhost:3000` and log in with your superuser credentials.
 
 ### Option B: Containerized Stack (Docker Compose)
 
@@ -188,7 +194,27 @@ python scripts/verify_system.py
 
 ---
 
-## 8. Author & License
+## 8. Agent Reporting Rules
+
+Every coding-agent progress update, review summary, and completion message must include deployment information.
+
+Use one of the following formats:
+Live deployment: https://actual-verified-deployment-url
+or
+Live deployment: NOT VERIFIED — deployment URL must be located or configured.
+
+### Rules
+1. Include this field in every agent progress and completion message.
+2. Use only a verified deployed URL.
+3. Never use a localhost development address as the live deployment URL.
+4. Update the README when the deployment URL changes.
+5. If deployment has not been completed or the URL cannot be checked, explicitly say so.
+6. Keep the deployment field present even when the message is short.
+7. Future coding tasks should be instructed to read this README section before starting.
+
+---
+
+## 9. Author & License
 
 * **Author:** Karthik Bhandarkar
 * **Repository:** [https://github.com/Karthik-bhandarkar/signalbridge](https://github.com/Karthik-bhandarkar/signalbridge)

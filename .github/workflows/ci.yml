@@ -5,10 +5,15 @@ on:
     branches: [ main, master, dev ]
   pull_request:
     branches: [ main, master, dev ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: Lint, Test & Coverage Profiling
+  backend-test:
+    name: Backend Lint, Test & Coverage
     runs-on: ubuntu-latest
 
     services:
@@ -96,8 +101,8 @@ jobs:
           name: code-coverage-report
           path: backend/coverage.xml
 
-  frontend:
-    name: Lint & Build Frontend
+  frontend-build:
+    name: Frontend Lint, Typecheck & Next.js Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -116,6 +121,38 @@ jobs:
       - name: Install Frontend Dependencies
         run: npm ci
 
-      - name: Typecheck and Build Dashboard
+      - name: Lint Frontend Code
+        run: npm run lint
+
+      - name: Verify TypeScript Types
+        run: npm run typecheck
+
+      - name: Build Next.js Application (Production Standalone)
         run: npm run build
 
+  docker-validation:
+    name: Docker Compose Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
+
+  cd-deploy-status:
+    name: CD Deployment Pipeline Guard
+    needs: [backend-test, frontend-build, docker-validation]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Audit Deployment Target
+        run: |
+          echo "=========================================================="
+          echo "SignalBridge Automated Deployment Pipeline Stage"
+          echo "Live deployment: NOT VERIFIED — deployment URL must be located or configured."
+          echo "All CI gates (Backend Pytest, Frontend Next.js build, Docker Compose) passed!"
+          echo "=========================================================="
