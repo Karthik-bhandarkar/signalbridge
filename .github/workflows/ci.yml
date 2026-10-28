@@ -173,7 +173,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "$EC2_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "${EC2_USER}@${EC2_HOST}" 'bash -s' << 'EOF'
+          ssh -o StrictHostKeyChecking=no \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=60 \
+              -o TCPKeepAlive=yes \
+              -i ~/.ssh/deploy_key "${EC2_USER}@${EC2_HOST}" 'bash -s' << 'EOF'
             set -e
             echo "📥 [1/4] Preparing repository on EC2..."
             if [ ! -d "/home/ubuntu/signalbridge" ]; then
@@ -182,8 +186,24 @@ jobs:
             cd /home/ubuntu/signalbridge
             git fetch origin main
             git reset --hard origin/main
+
+            # Ensure 2GB swap space exists to prevent memory exhaustion during parallel docker builds
+            if [ ! -f /swapfile ] && [ "$(id -u)" -eq 0 -o -w / ]; then
+              echo "💾 Enabling 2GB build swap memory..."
+              fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile || true
+            elif [ ! -f /swapfile ]; then
+              sudo fallocate -l 2G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null || true
+              sudo chmod 600 /swapfile 2>/dev/null || true
+              sudo mkswap /swapfile 2>/dev/null || true
+              sudo swapon /swapfile 2>/dev/null || true
+            fi
+
             echo "🐳 [2/4] Building and launching updated containers..."
             docker compose -f docker-compose.prod.yml up -d --build
+
             echo "🗄️ [3/4] Running database migrations..."
             sleep 5
             docker compose -f docker-compose.prod.yml exec -T web python manage.py migrate --noinput || true
