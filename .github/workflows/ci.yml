@@ -150,7 +150,7 @@ jobs:
     name: Continuous Deployment to AWS EC2
     needs: [backend-test, frontend-build, docker-validation]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
