@@ -140,8 +140,8 @@ jobs:
       - name: Validate Docker Compose Configuration
         run: docker compose config
 
-  cd-deploy-status:
-    name: CD Deployment Pipeline Guard
+  cd-deploy:
+    name: Continuous Deployment to AWS EC2
     needs: [backend-test, frontend-build, docker-validation]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -149,10 +149,34 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Audit Deployment Target
+      - name: Execute Automated Remote Deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER || 'ubuntu' }}
+          EC2_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_KEY" ]; then
+            echo "⚠️ AWS deployment secrets (EC2_HOST, EC2_SSH_KEY) not yet configured in GitHub Repository Settings."
+            echo "Live deployment: NOT VERIFIED — deployment URL must be located or configured."
+            echo "Skipping automated remote deploy."
+            exit 0
+          fi
           echo "=========================================================="
-          echo "SignalBridge Automated Deployment Pipeline Stage"
-          echo "Live deployment: NOT VERIFIED — deployment URL must be located or configured."
-          echo "All CI gates (Backend Pytest, Frontend Next.js build, Docker Compose) passed!"
+          echo "🚀 Initiating Automated Deployment to AWS EC2 ($EC2_HOST)..."
           echo "=========================================================="
+          mkdir -p ~/.ssh
+          echo "$EC2_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "${EC2_USER}@${EC2_HOST}" 'bash -s' << 'EOF'
+            set -e
+            echo "📥 [1/4] Pulling latest main branch on EC2..."
+            cd /home/ubuntu/signalbridge || cd ~/signalbridge
+            git fetch origin main
+            git reset --hard origin/main
+            echo "🐳 [2/4] Building and launching updated containers..."
+            docker compose -f docker-compose.prod.yml up -d --build
+            echo "🗄️ [3/4] Running database migrations..."
+            sleep 5
+            docker compose -f docker-compose.prod.yml exec -T web python manage.py migrate --noinput || true
+            echo "🎉 [4/4] Automated Deployment to AWS Succeeded!"
+          EOF
