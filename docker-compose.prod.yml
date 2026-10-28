@@ -19,6 +19,28 @@ services:
     depends_on:
       web:
         condition: service_healthy
+      frontend:
+        condition: service_started
+    networks:
+      - signalbridge_prod_network
+
+
+  # ---------------------------------------------------------------------------
+  # 1b. Next.js 16 Webhook & Incident Command Center UI
+  # High-throughput SSR frontend with live telemetry & operator dashboard.
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: signalbridge_frontend_prod
+    restart: always
+    expose:
+      - "3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-signalbridge_db}
     networks:
       - signalbridge_prod_network
 
