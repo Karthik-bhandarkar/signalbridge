@@ -45,13 +45,25 @@ function ensureTrailingSlash(path: string): string {
   return queryString !== undefined ? `${normalizedPath}?${queryString}` : normalizedPath;
 }
 
-// Cross-tab synchronization
+// Same-tab and cross-tab session synchronization
 const authChannel =
   typeof window !== "undefined" && "BroadcastChannel" in window
     ? new BroadcastChannel("sb_auth_sync")
     : null;
 
+const localAuthListeners = new Set<(type: "LOGIN" | "LOGOUT", payload?: unknown) => void>();
+
 export function broadcastAuthChange(type: "LOGIN" | "LOGOUT", payload?: unknown) {
+  // 1. Immediately notify local tab listeners (since BroadcastChannel excludes sender tab)
+  localAuthListeners.forEach((cb) => {
+    try {
+      cb(type, payload);
+    } catch {
+      // Ignore callback errors
+    }
+  });
+
+  // 2. Broadcast to other open tabs
   if (authChannel) {
     try {
       authChannel.postMessage({ type, payload, timestamp: Date.now() });
@@ -62,14 +74,21 @@ export function broadcastAuthChange(type: "LOGIN" | "LOGOUT", payload?: unknown)
 }
 
 export function subscribeToAuthChanges(callback: (type: "LOGIN" | "LOGOUT", payload?: unknown) => void) {
-  if (!authChannel) return () => {};
+  localAuthListeners.add(callback);
   const handler = (event: MessageEvent) => {
     if (event.data?.type) {
       callback(event.data.type, event.data.payload);
     }
   };
-  authChannel.addEventListener("message", handler);
-  return () => authChannel.removeEventListener("message", handler);
+  if (authChannel) {
+    authChannel.addEventListener("message", handler);
+  }
+  return () => {
+    localAuthListeners.delete(callback);
+    if (authChannel) {
+      authChannel.removeEventListener("message", handler);
+    }
+  };
 }
 
 export function triggerLoginModal() {

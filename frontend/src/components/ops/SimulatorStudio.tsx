@@ -66,11 +66,6 @@ export default function SimulatorStudio({
   ];
 
   async function handleDispatch() {
-    if (!isOperator) {
-      onRequestAuth();
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setResult(null);
