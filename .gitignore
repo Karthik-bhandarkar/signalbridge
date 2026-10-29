@@ -109,3 +109,10 @@ Thumbs.db
 
 frontend/.screenshots/
 *.tokens.json
+
+# E2E test results and terraform working directory
+test-results/
+playwright-report/
+e2e/playwright-report/
+terraform/.terraform/
+

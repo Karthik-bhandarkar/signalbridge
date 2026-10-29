@@ -7,8 +7,7 @@ test.describe("03 Incident Lifecycle Management", () => {
     const signInBtn = page.getByRole("button", { name: /Sign In as Operator/i }).first();
     if (await signInBtn.isVisible()) {
       await signInBtn.click();
-      await page.getByRole("button", { name: /Demo Operator/i }).first().click();
-      await page.getByRole("button", { name: /Sign In to Operator Console/i }).click();
+      await page.getByRole("button", { name: /1-Click Sign In as Demo Operator/i }).click();
       await expect(page.locator("text=Operator Authentication")).not.toBeVisible();
     }
   });
@@ -51,3 +50,4 @@ test.describe("03 Incident Lifecycle Management", () => {
     }
   });
 });
+

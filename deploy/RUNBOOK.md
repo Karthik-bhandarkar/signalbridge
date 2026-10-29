@@ -76,52 +76,59 @@ aws cloudfront create-invalidation \
 
 ---
 
-## 3. Post-Deployment Verification (Smoke Tests)
+## 3. Post-Deployment Verification (One-Command Smoke Test)
 
-Run these curl commands directly against the live URL to verify the new build is live:
+Run the unified automated smoke test directly against the live URL:
 
-### 1. Verify Deployment Version & Git Commit
 ```bash
-curl -s -i https://d1soslo0efb36p.cloudfront.net/api/v1/version/
+python scripts/smoke_test_live.py --url https://d1soslo0efb36p.cloudfront.net
 ```
-*Expected*: `HTTP/2 200`, JSON payload with `git_commit`, `build_time`, and `environment: "production"`.
 
-### 2. Verify SSE Live Stream (Fix D5)
-```bash
-curl -N -H "Accept: text/event-stream" https://d1soslo0efb36p.cloudfront.net/api/v1/stream/
-```
-*Expected*: `HTTP/2 200`, `content-type: text/event-stream; charset=utf-8`, initial `event: ping` heartbeat. **Zero 406 errors**.
-
-### 3. Verify Public Overview Telemetry & Real Calculated MTTR (Fix D11)
-```bash
-curl -s https://d1soslo0efb36p.cloudfront.net/api/v1/public/overview/
-```
-*Expected*: `HTTP/2 200`, JSON with `open_incidents`, `deliveries_24h`, `replay_suppression_rate_pct`, `mttr_minutes`.
-
-### 4. Verify Demo Operator Login & CSRF Rotation (Fix D1, D2, D4)
-```bash
-# Obtain fresh CSRF token
-curl -c cookies.txt -s https://d1soslo0efb36p.cloudfront.net/api/v1/auth/csrf/
-
-# Extract CSRF token and perform login
-CSRF=$(grep csrftoken cookies.txt | awk '{print $7}')
-curl -b cookies.txt -c cookies.txt -X POST https://d1soslo0efb36p.cloudfront.net/api/v1/auth/login/ \
-  -H "Content-Type: application/json" \
-  -H "X-CSRFToken: $CSRF" \
-  -d '{"username":"demo.operator","password":"OperatorDemo@2026!"}'
-```
-*Expected*: `HTTP/2 200`, `{"status":"success","user":{"username":"demo.operator","role":"OPERATOR","is_demo_user":true}}`.
-
-### 5. Run Automated E2E Suite Against Live URL
-```bash
-npm run test:e2e
-```
+This single command executes and validates all 5 mission-critical flows:
+1. **Version & Commit SHA**: Confirms `GET /api/v1/version/` returns HTTP 200 with matching git commit and production environment.
+2. **Public 24h Telemetry**: Confirms `GET /api/v1/public/overview/` returns clean unauthenticated metrics (deliveries, open incidents, MTTR, replay suppression) without 500 errors or secret leaks.
+3. **Operator Authentication**: Requests fresh CSRF token and executes `POST /api/v1/auth/login/` with `demo.operator`, verifying session cookies and `OPERATOR` role.
+4. **Simulator Dispatch**: Dispatches synthetic `payment_gateway_saturation` webhook via `POST /api/v1/simulator/dispatch/` with authenticated session and rotated CSRF token.
+5. **SSE Stream**: Connects to `GET /api/v1/stream/` over HTTP/2, validates `text/event-stream; charset=utf-8`, receives initial handshake, and disconnects gracefully.
 
 ---
 
-## 4. Rollback Plan
+## 4. Terraform Origin Lock: Two-Phase Rollout & Rollback Order (Fix D9)
 
-If an unrecoverable failure occurs during the release:
+To prevent traffic interruption while CloudFront edge locations deploy origin configuration changes (~3-5 minutes), apply Terraform in two explicit phases:
+
+### Phase 1: Apply Permissive Origin Injection (CloudFront First)
+Deploy CloudFront custom header injection and `CloudFront-Forwarded-Proto` forwarding while ALB listener rules remain permissive:
+```bash
+cd terraform
+# Apply CloudFront distribution changes only:
+terraform apply -target=aws_cloudfront_distribution.app_distribution -target=random_password.origin_secret
+```
+*Verification*: Check EC2 Nginx access logs to verify incoming requests contain header `X-Origin-Verify` and `CloudFront-Forwarded-Proto: https`.
+
+### Phase 2: Enforce Strict ALB Origin Lock
+Once CloudFront has updated, deploy the dedicated security group and strict ALB listener enforcement:
+```bash
+# Apply dedicated ALB security group (prefix list quota protection) and strict listener rule:
+terraform apply -target=aws_security_group.alb_dedicated_sg -target=aws_lb_listener.http -target=aws_lb_listener_rule.origin_verify
+```
+*Verification*:
+- Direct ALB HTTP requests: `curl -I http://<alb-dns-name>/` returns `HTTP 403 Access Denied`.
+- CloudFront HTTPS requests: `curl -I https://d1soslo0efb36p.cloudfront.net/health/live/` returns `HTTP 200 OK`.
+
+### Rollback Order for Origin Lock
+If CloudFront or the ALB experiences routing degradation:
+1. **Revert Phase 2 First**: Switch `aws_lb_listener.http` default action back to `forward` target group `app_tg`:
+   ```bash
+   terraform apply -target=aws_lb_listener.http
+   ```
+2. **Revert Phase 1**: Revert CloudFront distribution origin headers if necessary.
+
+---
+
+## 5. Emergency Full Rollback Plan
+
+If an unrecoverable failure occurs during the application release:
 ```bash
 # 1. Check out previous known good commit or main
 git checkout main
@@ -133,3 +140,4 @@ docker compose -f docker-compose.prod.yml up -d
 # 3. Re-invalidate CloudFront
 aws cloudfront create-invalidation --distribution-id <ID> --paths "/*"
 ```
+

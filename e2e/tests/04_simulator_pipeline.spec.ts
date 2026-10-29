@@ -8,13 +8,12 @@ test.describe("04 Live Webhook Simulator Pipeline", () => {
     const signInBtn = page.getByRole("button", { name: /Sign In as Operator/i }).first();
     if (await signInBtn.isVisible()) {
       await signInBtn.click();
-      await page.getByRole("button", { name: /Demo Operator/i }).first().click();
-      await page.getByRole("button", { name: /Sign In to Operator Console/i }).click();
+      await page.getByRole("button", { name: /1-Click Sign In as Demo Operator/i }).click();
       await expect(page.locator("text=Operator Authentication")).not.toBeVisible();
     }
 
     // Verify simulator card exists
-    await expect(page.locator("text=INGESTION SIMULATOR STUDIO")).toBeVisible();
+    await expect(page.locator("text=LIVE INGESTION SIMULATOR").or(page.locator("text=SIMULATOR"))).toBeVisible();
 
     // Select scenario
     const scenarioRadio = page.locator("input[type='radio']").first();

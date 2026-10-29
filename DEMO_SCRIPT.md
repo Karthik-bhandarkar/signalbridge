@@ -120,3 +120,4 @@
 
 **Narration / Voiceover**:
 > *"SignalBridge: High-throughput ingestion, zero lost webhooks, and instant incident clarity. Deployed on AWS with CloudFront, Nginx, Django, Next.js, and PostgreSQL. Thank you."*
+

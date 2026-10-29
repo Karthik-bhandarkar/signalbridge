@@ -1,4 +1,4 @@
-# SignalBridge — Webhook Ingestion, Active API Monitoring & Incident Response Platform
+# SignalBridge — Webhook Ingestion, Active Monitoring & Automated Incident Response
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.13-blue.svg)](https://python.org)
 [![Django 5.1](https://img.shields.io/badge/django-5.1-092E20.svg)](https://djangoproject.com)
@@ -7,16 +7,15 @@
 [![PostgreSQL 16](https://img.shields.io/badge/database-PostgreSQL%2016-336791.svg)](https://postgresql.org)
 [![Redis 7](https://img.shields.io/badge/broker%20%26%20cache-Redis%207-DC382D.svg)](https://redis.io)
 [![Celery 5.4](https://img.shields.io/badge/tasks-Celery%205.4-37814A.svg)](https://docs.celeryq.dev)
-[![Tests: 113 Passed](https://img.shields.io/badge/pytest-113%20passed%20%7C%2083%25%20coverage-brightgreen.svg)](docs/TEST_REPORT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-SignalBridge is an incident-response platform that accepts authenticated webhook events and actively monitors configured APIs. It deduplicates repeated deliveries, correlates distinct related alerts into incidents, processes work asynchronously with durable recovery, tracks archive and notification outcomes, and provides a secure operator dashboard for investigating and resolving incidents.
+SignalBridge is a high-throughput webhook ingestion gateway and automated incident triage platform. It sits between external alert providers (PagerDuty, Datadog, CloudWatch, Prometheus) and the on-call engineer, cryptographically verifying HMAC-SHA256 signatures, deduplicating replays before worker queues, clustering correlated alert signals into actionable incidents, and providing a secure operator console.
 
 ---
 
 ## Live Deployment
 
-Live deployment: NOT VERIFIED — deployment URL must be located or configured.
+**Live deployment: https://d1soslo0efb36p.cloudfront.net**
 
 ---
 
@@ -24,198 +23,113 @@ Live deployment: NOT VERIFIED — deployment URL must be located or configured.
 
 ```text
 ┌─────────────────────────────────┐       ┌─────────────────────────────────┐
-│ External Webhook Sources        │       │ Active Synthetic API Monitors   │
-│ (PagerDuty, Datadog, GitHub)    │       │ (Periodically scheduled checks) │
+│ External Webhook Sources        │       │ On-Call Operators & Viewers     │
+│ (PagerDuty, Datadog, GitHub)    │       │ (Browser / Desktop / Mobile)    │
 └────────────────┬────────────────┘       └────────────────┬────────────────┘
-                 │ Signed HTTP POST                        │ HTTP Probes (SSRF-Protected)
+                 │ Signed HTTP POST                        │ HTTPS / WSS
                  ▼                                         ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
-│                    SIGNALBRIDGE INGESTION & CORE API                      │
-│                                                                           │
-│  • HMAC-SHA256 Constant-Time Verification (`hmac.compare_digest`)         │
-│  • Redis Atomic ZSET Sliding-Window Rate Limiter                          │
-│  • Dual-Layer Idempotency (Atomic Redis Lock + PostgreSQL Unique Index)   │
-│  • Transaction-Bound Dispatch via `transaction.on_commit()`               │
-│  • Kubernetes Liveness (`/health/live/`) & Readiness (`/health/ready/`)   │
+│                         AMAZON CLOUDFRONT CDN                             │
+│  • Edge caching for static hashed assets (/_next/static/*)                │
+│  • Full cookie and header pass-through on application routes (/*)         │
+│  • Cryptographic origin lock via custom header (X-Origin-Verify)          │
 └─────────────────────────────────────┬─────────────────────────────────────┘
                                       │
-                         Durable Task │ Dispatched to Redis
+                         HTTPS Egress │ Prefix-List Restricted
                                       ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
-│                   CELERY ASYNCHRONOUS WORKER CLUSTER                      │
-│                                                                           │
-│  • Idempotent redelivery handling (skips already processed payloads)      │
-│  • Deduplication by External ID + Deterministic Content SHA-256 Hash      │
-│  • Incident Correlation & 15-Minute Reopening Window                      │
-│  • Row-Level Locking (`SELECT FOR UPDATE`) & Advisory Concurrency Safety  │
-│  • S3 Cold Archival with truthful status (`PENDING`, `ARCHIVED`, `FAILED`)│
-│  • Outbound Multi-Channel Notifications (Console, Webhook, Slack, PD)     │
+│                    APPLICATION LOAD BALANCER (ALB)                        │
+│  • Security group ingress locked to AWS CloudFront origin IP ranges       │
+│  • Listener rule dropping direct non-CloudFront requests (HTTP 403)       │
 └─────────────────────────────────────┬─────────────────────────────────────┘
                                       │
+                            HTTP Port │ 80
                                       ▼
 ┌───────────────────────────────────────────────────────────────────────────┐
-│                     REACT + TYPESCRIPT OPERATOR SPA                       │
-│                                                                           │
-│  • Live health telemetry pinging `/health/ready/` every 10s               │
-│  • Incident Command Center: Acknowledge, Assign, Resolve, Reopen, Notes   │
-│  • Alerts Explorer: Inspect raw payloads & S3 cold storage pointers       │
-│  • Service Health Radar: Configure monitors & trigger real-time probes    │
-│  • Webhook Integrations: Manage sources, limits & zero-downtime rotation  │
-│  • Outbound Notifications: Track delivery audit log across channels       │
-│  • Global Audit Log: Immutable chronological timeline of system events    │
+│                           NGINX REVERSE PROXY                             │
+│  • SSL termination proxy, X-Forwarded-Proto header normalization          │
+│  • Real-time SSE streaming bypass (proxy_buffering off, 70s timeout)      │
+│  • Public static assets (/static/) served directly from volume            │
+└──────────────────┬─────────────────────────────────────┬──────────────────┘
+                   │ /api/*, /health/*                   │ /*, /dashboard/*
+                   ▼                                     ▼
+┌─────────────────────────────────────┐   ┌─────────────────────────────────┐
+│  DJANGO 5 WSGI GATEWAY (GUNICORN)   │   │ NEXT.JS 16 APP ROUTER (NODE 20) │
+│  • HMAC-SHA256 constant-time check  │   │  • Server-rendered public views │
+│  • Rate-limiting (Redis ZSET)       │   │  • Client-side session hydrator │
+│  • Resilient SSE (/api/v1/stream/)  │   │  • Live Telemetry Beacon        │
+│  • Session + CSRF auth (/api/v1/..) │   │  • Interactive Simulator Studio │
+└──────────────────┬──────────────────┘   └─────────────────────────────────┘
+                   │
+    Async Dispatch │ via Celery & Redis
+                   ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│             POSTGRESQL 16 (RDS)  +  REDIS 7 (CACHE & BROKER)              │
+│  • alerts_incident, alerts_alert, webhooks_ingestedpayload                │
+│  • Atomic deduplication & idempotency hashing                             │
+│  • Amazon S3 cold tier payload archival                                   │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Core Capabilities & Implemented Features
+## 2. Core Capabilities
 
-### 🛡️ Webhook Ingestion & Cryptographic Security
-- **HMAC-SHA256 Signatures:** Validates raw payload bytes against incoming `X-Signature-SHA256` headers using `hmac.compare_digest` to eliminate timing attacks.
-- **Shared Redis Sliding-Window Rate Limiting:** Enforces per-minute source burst quotas using an atomic Redis ZSET pipeline (`ZREMRANGEBYSCORE`, `ZCARD`, `ZADD`) with local deque in-memory fallback.
-- **Dual-Layer Idempotency:** Combines fast Redis `SETNX` token acquisition with an unbreachable PostgreSQL unique constraint (`source`, `idempotency_key`), returning `202 Accepted (duplicate=True)` on retries.
-- **Transaction Safety:** Enqueues Celery background tasks strictly within `transaction.on_commit()`, preventing worker race conditions before PostgreSQL commits the record to disk.
-
-### ⚡ Correlation, Deduplication & Self-Healing Workers
-- **Deterministic Content Hashing:** Alerts matching `(source, external_id)` with identical SHA-256 payload hashes are safely deduplicated. Mismatched contents raise `AlertConflictError` (HTTP 409).
-- **Incident Grouping & Reopening:** Grouped under service and component scope. Resolved incidents reopen automatically if new alerts arrive within a **15-minute window**.
-- **Crash Recovery Outbox Loops:**
-  - `reconcile_pending_webhooks`: Periodic sweep identifying webhooks stuck in `PENDING` > 5 minutes and redelivering them with exponential backoff.
-  - `reclaim_stale_processing_webhooks`: Periodic sweep detecting worker crash/OOM scenarios (`PROCESSING` > 15 minutes) and safely resetting them to `PENDING`.
-- **Truthful S3 Archival:** Accurately reflects `ARCHIVED` or `FAILED` without false positives. Provides manual re-enqueue controls (`POST /api/v1/alerts/{id}/retry/`).
-
-### 📡 Active Synthetic API Monitoring & SSRF Defense
-- **Automated Health Probes:** Configurable scheduled monitors verifying HTTP status codes, latency thresholds, and consecutive failure counts.
-- **Automatic Incident Creation:** Threshold breaches automatically instantiate new incidents and correlate ongoing alert streams.
-- **Comprehensive SSRF Shield:** Filters all target endpoints against loopback (`127.0.0.0/8`), link-local metadata (`169.254.169.254`), private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and unsafe URL schemes (`file://`, `gopher://`).
-
-### 🖥️ Operator Mission-Control Dashboard (React + TypeScript)
-- **Zero Mock Data:** Directly communicates with backend REST APIs via typed client (`frontend/src/lib/api.ts`).
-- **Live Health Indicator:** Real-time pulse pinging `/health/ready/` every 10 seconds.
-- **Incident Investigation Modal:** View correlated alert feeds, add timestamped operator notes, assign operators, and execute state transitions.
-- **Integrations & Key Rotation:** View webhook sources, edit rate limits, reveal secret keys, and execute instant zero-downtime secret rotations.
+- **Ironclad HMAC-SHA256 Verification:** Constant-time verification drops forged or tampered webhooks in under 50ms before touching persistent databases.
+- **Distributed Deduplication & Replay Suppression:** Replays are recognized at the perimeter and returned HTTP 200 without queueing redundant compute tasks.
+- **Intelligent Alert Correlation:** Correlates multiple raw alert bursts into unified incidents with automatic severity escalation.
+- **Resilient Real-Time Telemetry:** Live SSE stream (`GET /api/v1/stream/`) provides sub-second incident updates to the dashboard with zero 406 errors, thread-safe Gunicorn workers, and silent polling fallback.
+- **Single Source-of-Truth Authentication:** Standardized on Django SessionAuthentication (`sessionid` cookie) + CSRF protection with cross-tab session broadcast.
+- **Role-Based Access Control (RBAC):**
+  - **Demo Operator (`demo.operator` / `OperatorDemo@2026!`):** 1-click login, full triage authority (Acknowledge, Resolve, Simulator dispatch).
+  - **Demo Viewer (`demo.viewer` / `ViewerDemo@2026!`):** 1-click login, read-only inspection.
+  - **Public Observer:** Unauthenticated view with live metrics.
 
 ---
 
-## 3. Verified Metrics & Quantitative Proof
+## 3. Quick Start & Local Development
 
-| Metric / Benchmark | Target | Verified Measured Value | Evidence / Report |
-| :--- | :--- | :--- | :--- |
-| **Ingestion HTTP Latency (p95)** | < 100 ms | **13 ms avg / 28 ms peak** | [docs/TEST_REPORT.md](docs/TEST_REPORT.md) |
-| **Deduplication Accuracy** | 100% | **0 duplicate incidents created** | [backend/tests/unit/test_stage_b_reliability.py](backend/tests/unit/test_stage_b_reliability.py) |
-| **Backend Test Suite** | 100% pass | **113 passed (83% coverage)** | [docs/TEST_REPORT.md](docs/TEST_REPORT.md) |
-| **Frontend Production Build** | Clean build | **0 errors, 85 kB gzipped bundle** | [docs/TEST_REPORT.md](docs/TEST_REPORT.md) |
-| **Frontend Linting (oxlint)** | 0 errors | **0 errors across 15 modules** | [docs/TEST_REPORT.md](docs/TEST_REPORT.md) |
+### Prerequisites
+- Node.js 20+ & npm 10+
+- Python 3.11+ & pip
+- Docker & Docker Compose (optional for containerized run)
 
----
-
-## 4. Quickstart Guide
-
-### Option A: Native Host Local Development
-
+### Running Locally with Dev Servers
 ```bash
-# 1. Clone repository
-git clone https://github.com/Karthik-bhandarkar/signalbridge.git
-cd signalbridge
-
-# 2. Setup Python virtual environment
+# 1. Start Django Backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1       # Windows PowerShell
-# source .venv/bin/activate         # Linux/macOS
+.\.venv\Scripts\Activate.ps1
+pip install -r backend/requirements/local.txt
+python backend/manage.py migrate
+python backend/manage.py seed_demo_users
+python backend/manage.py seed_demo_data
+python backend/manage.py runserver 8000
 
-# 3. Install backend dependencies & start server
-cd backend
-pip install -r requirements/local.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver 127.0.0.1:8000
-
-# 4. Start frontend dashboard (Terminal 2)
-cd frontend
-npm install
-npm run dev
+# 2. Start Next.js Frontend (in a separate terminal)
+npm --prefix frontend install
+npm --prefix frontend run dev
 ```
 
-Visit the dashboard at `http://localhost:3000` and log in with your superuser credentials.
+Visit `http://localhost:3000` to interact with the console.
 
-### Option B: Containerized Stack (Docker Compose)
+---
+
+## 4. Automated Verification Suite
 
 ```bash
-cp .env.example .env
-docker compose up -d --build
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py createsuperuser
+# Run backend pytest suite (unit & reliability tests)
+python -m pytest backend/tests/unit
+
+# Run frontend typecheck & lint
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+
+# Run Playwright end-to-end suite
+npx playwright test --config=e2e/playwright.config.ts
 ```
 
 ---
 
-## 5. Running Verification Checks
+## 5. Deployment Guide
 
-### Execute Backend Pytest Suite
-```bash
-cd backend
-pytest -v
-# Or inside Docker:
-# docker compose exec web pytest
-```
-
-### Execute Frontend Lint & Build
-```bash
-cd frontend
-npm run lint
-npm run build
-```
-
-### Execute Full System Smoke Test
-```bash
-python scripts/verify_system.py
-```
-
----
-
-## 6. Project Documentation Index
-
-- [Architecture & Data Flow (`docs/ARCHITECTURE.md`)](docs/ARCHITECTURE.md) — Mermaid system architecture, decoupling patterns, and failure modes.
-- [API Reference Manual (`docs/API.md`)](docs/API.md) — Complete endpoint reference, schemas, status codes, and auth methods.
-- [Reliability & Idempotency Specification (`docs/RELIABILITY.md`)](docs/RELIABILITY.md) — Dual-layer idempotency, recovery loops, and concurrency design.
-- [Security Architecture (`docs/SECURITY.md`)](docs/SECURITY.md) — Threat model, SSRF defense, constant-time HMAC, and production hardening.
-- [Local Development Guide (`docs/LOCAL_DEVELOPMENT.md`)](docs/LOCAL_DEVELOPMENT.md) — Step-by-step developer onboarding and service access guide.
-- [Production Deployment Playbook (`docs/DEPLOYMENT.md`)](docs/DEPLOYMENT.md) — Zero-downtime deployment, environment variables, and disaster recovery.
-- [Master AWS Low-Cost Deployment Guide (`AWS_MASTER_DEPLOYMENT_GUIDE.md`)](AWS_MASTER_DEPLOYMENT_GUIDE.md) — Step-by-step hands-on AWS lab manual, A-to-Z cloud skills, and $5 budget safety guard.
-- [Test Execution Report (`docs/TEST_REPORT.md`)](docs/TEST_REPORT.md) — Complete logs, timings, and verification results across 113 backend and 6 frontend tests.
-
----
-
-## 7. Known Limitations & Honest Status
-
-1. **Third-Party Live Webhook Deliveries:** Real Slack and PagerDuty outbound alerts require valid external API webhook URLs. In local development, the dispatch adapter defaults to the Console and mock channels.
-2. **Multi-Threaded PostgreSQL Concurrency Test:** The test `test_20_concurrent_threads_yield_single_incident` requires PostgreSQL row-level locks and is skipped automatically under the SQLite in-memory test runner. It passes when executed against Docker PostgreSQL.
-3. **Cloud Object Storage:** Automated tests utilize local S3Mock. In production, cold storage archival connects to Oracle Cloud Infrastructure (OCI) Object Storage via its S3-compatibility API by configuring `AWS_S3_ENDPOINT_URL` (e.g. `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_STORAGE_BUCKET_NAME` with an OCI Customer Secret Key.
-
----
-
-## 8. Agent Reporting Rules
-
-Every coding-agent progress update, review summary, and completion message must include deployment information.
-
-Use one of the following formats:
-Live deployment: https://actual-verified-deployment-url
-or
-Live deployment: NOT VERIFIED — deployment URL must be located or configured.
-
-### Rules
-1. Include this field in every agent progress and completion message.
-2. Use only a verified deployed URL.
-3. Never use a localhost development address as the live deployment URL.
-4. Update the README when the deployment URL changes.
-5. If deployment has not been completed or the URL cannot be checked, explicitly say so.
-6. Keep the deployment field present even when the message is short.
-7. Future coding tasks should be instructed to read this README section before starting.
-
----
-
-## 9. Author & License
-
-* **Author:** Karthik Bhandarkar
-* **Repository:** [https://github.com/Karthik-bhandarkar/signalbridge](https://github.com/Karthik-bhandarkar/signalbridge)
-* **License:** Distributed under the **MIT License**.
+Refer to [deploy/RUNBOOK.md](deploy/RUNBOOK.md) for step-by-step production release instructions on AWS EC2 and CloudFront.

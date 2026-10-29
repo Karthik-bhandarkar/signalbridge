@@ -117,7 +117,7 @@ export function useLiveStream({
         eventSourceRef.current = null;
         failureCountRef.current += 1;
 
-        if (failureCountRef.current >= 3) {
+        if (failureCountRef.current >= 2) {
           startPollingFallback();
         } else {
           setStatus("reconnecting");

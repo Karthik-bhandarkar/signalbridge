@@ -9,17 +9,9 @@ test.describe("02 Operator Authentication & Session Hydration", () => {
     await signInBtn.click();
     await expect(page.locator("text=Operator Authentication")).toBeVisible();
 
-    // Click 1-Click Demo Operator fill
-    const demoOpBtn = page.getByRole("button", { name: /Demo Operator/i }).first();
+    // Click 1-Click Demo Operator fill and sign in
+    const demoOpBtn = page.getByRole("button", { name: /1-Click Sign In as Demo Operator/i });
     await demoOpBtn.click();
-
-    // Verify fields filled
-    const usernameInput = page.locator("input#username");
-    await expect(usernameInput).toHaveValue("demo.operator");
-
-    // Submit form
-    const submitBtn = page.getByRole("button", { name: /Sign In to Operator Console/i });
-    await submitBtn.click();
 
     // Modal closes and Operator badge displays
     await expect(page.locator("text=Operator Authentication")).not.toBeVisible();
@@ -42,10 +34,10 @@ test.describe("02 Operator Authentication & Session Hydration", () => {
     const signInBtn = page.getByRole("button", { name: /Sign In as Operator/i }).first();
     await signInBtn.click();
 
-    await page.locator("input#username").fill("invalid_user");
-    await page.locator("input#passkey").fill("WrongPassword999!");
-    await page.getByRole("button", { name: /Sign In to Operator Console/i }).click();
+    await page.locator("input[placeholder*='demo.operator']").fill("invalid_user");
+    await page.locator("input[type='password']").fill("WrongPassword999!");
+    await page.getByRole("button", { name: /Authenticate Operator Session/i }).click();
 
-    await expect(page.locator("text=Authentication failed").or(page.locator("text=Invalid"))).toBeVisible();
+    await expect(page.locator("text=Invalid credentials").or(page.locator("text=failed"))).toBeVisible();
   });
 });

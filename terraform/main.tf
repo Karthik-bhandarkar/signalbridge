@@ -119,26 +119,25 @@ resource "aws_route_table_association" "public_2" {
 # 3. SECURITY GROUPS (LEAST PRIVILEGE)
 # -----------------------------------------------------------------------------
 
+# CloudFront Origin Facing Managed Prefix List for ALB Security Group ingress restriction
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 # Application Load Balancer Security Group
-resource "aws_security_group" "alb_sg" {
-  name        = "${var.project_name}-alb-sg"
-  description = "Allows public HTTPS and HTTP ingress to the Application Load Balancer"
+# Enforces Origin Lock: Restricts ingress strictly to CloudFront IP ranges
+# Dedicated ALB Security Group to isolate CloudFront Managed Prefix List (~55 rules) from quota limits
+resource "aws_security_group" "alb_dedicated_sg" {
+  name        = "${var.project_name}-alb-dedicated-sg"
+  description = "Allows ingress to the Application Load Balancer strictly from CloudFront Origin Prefix List"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP Public Ingress"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTPS Public Ingress"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "HTTP Ingress strictly from CloudFront Origin Prefix List"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
 
   egress {
@@ -150,7 +149,7 @@ resource "aws_security_group" "alb_sg" {
   }
 
   tags = {
-    Name = "${var.project_name}-alb-sg"
+    Name = "${var.project_name}-alb-dedicated-sg"
   }
 }
 
@@ -165,7 +164,7 @@ resource "aws_security_group" "ec2_sg" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    security_groups = [aws_security_group.alb_dedicated_sg.id]
   }
 
   ingress {
@@ -409,7 +408,7 @@ resource "aws_lb" "alb" {
   name               = "${var.project_name}-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
+  security_groups    = [aws_security_group.alb_dedicated_sg.id]
   subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
 
   enable_deletion_protection = false
@@ -447,9 +446,33 @@ resource "aws_lb_listener" "http" {
   port              = 80
   protocol          = "HTTP"
 
+  # Enforce Origin Lock: Deny direct requests missing X-Origin-Verify header
   default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Access denied: direct ALB access is forbidden. Requests must originate through CloudFront."
+      status_code  = "403"
+    }
+  }
+}
+
+# Enforce Origin Lock: Allow forward only when secret X-Origin-Verify header matches
+resource "aws_lb_listener_rule" "origin_verify" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 10
+
+  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app_tg.arn
+  }
+
+  condition {
+    http_header {
+      http_header_name = "X-Origin-Verify"
+      values           = [random_password.origin_secret.result]
+    }
   }
 }
 

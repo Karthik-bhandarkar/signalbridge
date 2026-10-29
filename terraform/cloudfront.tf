@@ -43,7 +43,7 @@ resource "aws_cloudfront_distribution" "app_distribution" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "Origin", "Referer", "Accept", "X-CSRFToken"]
+      headers      = ["Host", "Origin", "Referer", "Accept", "X-CSRFToken", "CloudFront-Forwarded-Proto"]
       cookies {
         forward = "all"
       }
@@ -87,7 +87,7 @@ resource "aws_cloudfront_distribution" "app_distribution" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "Authorization", "X-CSRFToken", "Origin", "Referer"]
+      headers      = ["Host", "Authorization", "X-CSRFToken", "Origin", "Referer", "CloudFront-Forwarded-Proto"]
       cookies {
         forward = "all"
       }

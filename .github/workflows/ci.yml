@@ -2,9 +2,9 @@ name: SignalBridge CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [ main, master, dev, fix/production-ready ]
   pull_request:
-    branches: [ main, master, dev ]
+    branches: [ main, master, dev, fix/production-ready ]
   workflow_dispatch:
 
 concurrency:
@@ -90,7 +90,7 @@ jobs:
         run: |
           python manage.py migrate
 
-      - name: Run Pytest Suite with 80%+ Coverage
+      - name: Run Pytest Suite with Coverage
         run: |
           pytest --cov=apps --cov-report=term-missing --cov-report=xml
 
@@ -127,9 +127,8 @@ jobs:
       - name: Verify TypeScript Types
         run: npm run typecheck
 
-      - name: Build Next.js Application (Production Standalone)
+      - name: Build Next.js Application
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/signalbridge_db
           NEXT_TELEMETRY_DISABLED: 1
         run: npm run build
 
@@ -145,71 +144,3 @@ jobs:
 
       - name: Validate Docker Compose Configuration
         run: docker compose config
-
-  cd-deploy:
-    name: Continuous Deployment to AWS EC2
-    needs: [backend-test, frontend-build, docker-validation]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
-
-      - name: Execute Automated Remote Deployment
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER || 'ubuntu' }}
-          EC2_KEY: ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          if [ -z "$EC2_HOST" ] || [ -z "$EC2_KEY" ]; then
-            echo "⚠️ AWS deployment secrets (EC2_HOST, EC2_SSH_KEY) not yet configured in GitHub Repository Settings."
-            echo "Live deployment: NOT VERIFIED — deployment URL must be located or configured."
-            echo "Skipping automated remote deploy."
-            exit 0
-          fi
-          echo "=========================================================="
-          echo "🚀 Initiating Automated Deployment to AWS EC2 ($EC2_HOST)..."
-          echo "=========================================================="
-          mkdir -p ~/.ssh
-          echo "$EC2_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=15 \
-              -o ServerAliveCountMax=60 \
-              -o TCPKeepAlive=yes \
-              -i ~/.ssh/deploy_key "${EC2_USER}@${EC2_HOST}" 'bash -s' << 'EOF'
-            set -e
-            echo "📥 [1/4] Preparing repository on EC2..."
-            if [ ! -d "/home/ubuntu/signalbridge" ]; then
-              git clone https://github.com/Karthik-bhandarkar/signalbridge.git /home/ubuntu/signalbridge
-            fi
-            cd /home/ubuntu/signalbridge
-            git fetch origin main
-            git reset --hard origin/main
-
-            # Ensure 2GB swap space exists to prevent memory exhaustion during parallel docker builds
-            if [ ! -f /swapfile ] && [ "$(id -u)" -eq 0 -o -w / ]; then
-              echo "💾 Enabling 2GB build swap memory..."
-              fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
-              chmod 600 /swapfile
-              mkswap /swapfile
-              swapon /swapfile || true
-            elif [ ! -f /swapfile ]; then
-              sudo fallocate -l 2G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null || true
-              sudo chmod 600 /swapfile 2>/dev/null || true
-              sudo mkswap /swapfile 2>/dev/null || true
-              sudo swapon /swapfile 2>/dev/null || true
-            fi
-
-            echo "🐳 [2/4] Building and launching updated containers..."
-            docker compose -f docker-compose.prod.yml build web
-            docker compose -f docker-compose.prod.yml build frontend
-            docker compose -f docker-compose.prod.yml build nginx
-            docker compose -f docker-compose.prod.yml up -d
-
-            echo "🗄️ [3/4] Running database migrations..."
-            sleep 5
-            docker compose -f docker-compose.prod.yml exec -T web python manage.py migrate --noinput || true
-            docker compose -f docker-compose.prod.yml exec -T web python manage.py seed_demo_users || true
-            echo "🎉 [4/4] Automated Deployment to AWS Succeeded!"
-          EOF

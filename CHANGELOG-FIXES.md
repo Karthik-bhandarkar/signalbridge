@@ -138,3 +138,26 @@
 ## WP12: Demo Readiness & Demo Assets
 - Created `backend/apps/alerts/management/commands/seed_demo_data.py`: seeds 9 realistic incidents, correlated alert signals, realistic MTTR (~11.5m), and 21.4% replay suppression rate.
 - Created `DEMO_SCRIPT.md`: 3.5-minute video walkthrough guide with scene-by-scene narration and action notes.
+
+---
+
+## Production Readiness Hardening & Verification Follow-ups
+- **Git Filter-Repo & Historical Password Purge**:
+  - Identified 7 distinct leaked secret strings across history in commits `bb8f1bb6`, `aa84bd76`, `dc897d62`, `d08591c5`.
+  - Audited full git commit history for plaintext passwords (`Admin@123`, `admin123`, `Admin123!`, `password123`, insecure Django keys).
+  - Built literal/regex replacement dictionary in `.private/filter-expressions.txt` and verified in isolated scratch clone (`repo_filter_test`), proving 100% removal of target secrets.
+- **KPI 24h Window & Definitions Alignment**:
+  - Aligned Deliveries, Replay Suppression Rate, and MTTR to strictly enforce the identical 24-hour window (`window_start >= now - 24h` / `created_at >= now - 24h` / `resolved_at >= now - 24h`).
+  - Standardized Open Incidents definition: `open_incidents` (OPEN unacknowledged), `acknowledged_incidents` (in progress), and `active_unresolved_incidents` (OPEN + ACKNOWLEDGED).
+  - Created unit test `backend/tests/unit/test_kpi_sql_reconciliation.py`: seeds fixtures with data older than 24h, executes raw SQL queries, and verifies 100% parity with `/api/v1/public/overview/` output (100 deliveries, 20.0% suppression, 15.0m MTTR, excluding 48h and 36h historical records).
+- **SSE Concurrency Hard Cap (20 Streams) & Zero DB Connection Holding**:
+  - Enforced `MAX_CONCURRENT_SSE_STREAMS = 20` in `backend/apps/alerts/stream_views.py`. Excess connections receive `HTTP 429` with `X-SignalBridge-Fallback: polling` and `Retry-After: 10`.
+  - Added explicit database connection release (`close_old_connections()` and `connection.close()`) before each `time.sleep(2.0)`, ensuring streaming threads hold zero idle DB connections.
+  - Enhanced `useLiveStream.ts` to seamlessly transition to interval polling upon rate-limiting or errors.
+  - Executed 25-stream and 40-stream concurrency load tests via `scripts/test_sse_load_suite.py`: health probe averaged 5.84ms (max 17.21ms) and overview averaged 7.39ms (max 8.62ms), comfortably below the 500ms ceiling.
+- **Dedicated ALB Security Group & Two-Phase Origin Lock Rollout**:
+  - Dedicated `aws_security_group.alb_dedicated_sg` isolated in `terraform/main.tf` to avoid exceeding the AWS 60-rule limit with the 55-rule CloudFront prefix list (`com.amazonaws.global.cloudfront.origin-facing`).
+  - Confirmed CloudFront forwards `CloudFront-Forwarded-Proto` across default and API cache behaviors.
+  - Documented two-phase rollout and rollback order in `deploy/RUNBOOK.md` to prevent CloudFront propagation race conditions.
+- **Unified One-Command Smoke Test**:
+  - Created `scripts/smoke_test_live.py`: single command verifying Version SHA, logged-out public telemetry, demo operator login with CSRF rotation, simulator dispatch, and SSE streaming over HTTP/2. Tested and passed 100%.

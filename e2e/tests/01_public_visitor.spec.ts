@@ -6,8 +6,8 @@ test.describe("01 Public Visitor Experience", () => {
     await expect(page).toHaveTitle(/SignalBridge/);
 
     // Verify Brand Logo
-    const logo = page.locator("header").getByLabel(/SignalBridge/i).or(page.locator("header text=signalbridge."));
-    await expect(logo.first()).toBeVisible();
+    const logo = page.locator("header").getByText(/signalbridge/i).first();
+    await expect(logo).toBeVisible();
 
     // Verify Dashboard CTA Button
     const dashboardCta = page.getByRole("link", { name: /Open Dashboard/i }).first();
@@ -51,10 +51,11 @@ test.describe("01 Public Visitor Experience", () => {
 
     // Verify Operator Modal appears
     await expect(page.locator("text=Operator Authentication")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Demo Operator/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Demo Operator/i }).first()).toBeVisible();
 
     // Close modal via Escape
     await page.keyboard.press("Escape");
     await expect(page.locator("text=Operator Authentication")).not.toBeVisible();
   });
 });
+

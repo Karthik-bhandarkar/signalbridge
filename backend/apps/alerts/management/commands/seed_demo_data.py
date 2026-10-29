@@ -173,6 +173,14 @@ class Command(BaseCommand):
                     "is_simulated": False,
                 },
             )
+            # Use .update() to override auto_now_add on first_seen_at and auto_now on last_seen_at
+            Incident.objects.filter(id=inc.id).update(
+                first_seen_at=d["first_seen"],
+                last_seen_at=d["last_seen"],
+                acknowledged_at=d.get("ack_at"),
+                resolved_at=d.get("resolved_at"),
+            )
+            inc.refresh_from_db()
             created_incidents.append(inc)
 
             # Create correlated alert signals
@@ -186,9 +194,8 @@ class Command(BaseCommand):
                         "title": f"{d['title']} - Signal #{i+1}",
                         "service_name": d["service"],
                         "severity": d["severity"],
-                        "status": Alert.AlertStatus.CORRELATED if d["status"] != Incident.IncidentStatus.RESOLVED else Alert.AlertStatus.RESOLVED,
-                        "created_at": alert_created,
-                        "raw_payload": {
+                        "deduplication_hash": f"dedup_{uuid.uuid4().hex[:16]}",
+                        "raw_metadata": {
                             "event": "alert.trigger",
                             "service": d["service"],
                             "metric_value": 98.4 + (i * 0.3),
@@ -228,3 +235,4 @@ class Command(BaseCommand):
                 f"correlated alerts, and 21.4% replay suppression rate."
             )
         )
+

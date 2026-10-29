@@ -11,7 +11,12 @@ services:
       context: .
       dockerfile: nginx/Dockerfile
     container_name: signalbridge_nginx_prod
-    restart: always
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
     ports:
       - "${PROD_HTTP_PORT:-80}:80"
     volumes:
@@ -34,7 +39,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: signalbridge_frontend_prod
-    restart: always
+    restart: unless-stopped
     expose:
       - "3000"
     environment:
@@ -55,8 +60,10 @@ services:
       dockerfile: Dockerfile
       args:
         BUILD_ENV: production
+        GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-latest}
+        BUILD_TIME: ${BUILD_TIME:-latest}
     container_name: signalbridge_web_prod
-    restart: always
+    restart: unless-stopped
     command: >
       gunicorn config.wsgi:application
       --bind 0.0.0.0:8000
@@ -109,9 +116,14 @@ services:
   # Asynchronously groups alerts, calculates hashes, and executes row-level locks.
   # ---------------------------------------------------------------------------
   celery_worker:
-    image: signalbridge_backend:prod
+    image:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5" signalbridge_backend:prod
     container_name: signalbridge_celery_worker_prod
-    restart: always
+    restart: unless-stopped
     command: celery -A config.celery worker -l info --concurrency=${CELERY_CONCURRENCY:-2} -Ofair
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
@@ -141,9 +153,14 @@ services:
   # Dispatches periodic active monitoring checks and metrics rollup sweeps.
   # ---------------------------------------------------------------------------
   celery_beat:
-    image: signalbridge_backend:prod
+    image:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5" signalbridge_backend:prod
     container_name: signalbridge_celery_beat_prod
-    restart: always
+    restart: unless-stopped
     command: celery -A config.celery beat -l info
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
@@ -174,9 +191,14 @@ services:
   # ===========================================================================
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5":16-alpine
     container_name: signalbridge_postgres_prod
-    restart: always
+    restart: unless-stopped
     profiles: ["local-staging"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
@@ -194,9 +216,14 @@ services:
       - signalbridge_prod_network
 
   redis:
-    image: redis:7-alpine
+    image: redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5":7-alpine
     container_name: signalbridge_redis_prod
-    restart: always
+    restart: unless-stopped
     profiles: ["local-staging"]
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     volumes:
@@ -212,7 +239,7 @@ services:
   s3:
     image: adobe/s3mock:latest
     container_name: signalbridge_s3_prod
-    restart: always
+    restart: unless-stopped
     profiles: ["local-staging"]
     environment:
       initialBuckets: ${AWS_STORAGE_BUCKET_NAME:-signalbridge-production-archives}
