@@ -2,6 +2,12 @@
 # SignalBridge — Git Ignore Configuration
 # =============================================================================
 
+# Private directory for real rotated admin credentials & private infra identifiers
+.private/
+docs/private/
+audit-screenshots/*.json
+audit-screenshots/
+
 # Internal Engineering Learning Journals & Personal Step Validations
 /docs/learning_journal/
 /docs/step_validations/
@@ -100,7 +106,6 @@ Thumbs.db
 .next/
 **/.next/
 *.tsbuildinfo
-
 
 frontend/.screenshots/
 *.tokens.json

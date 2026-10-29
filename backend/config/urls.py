@@ -69,6 +69,7 @@ from apps.core.auth_views import (
     UserRoleUpdateAPIView,
 )
 from apps.webhooks.views import (
+    IngestionEventsAPIView,
     IntegrationListCreateAPIView,
     IntegrationDetailAPIView,
     IntegrationSecretRegenerateAPIView,
@@ -128,7 +129,8 @@ urlpatterns = [
     path("api/stream/", LiveEventStreamAPIView.as_view(), name="live-stream"),
     path("api/v1/public/overview/", PublicOverviewAPIView.as_view(), name="public-overview"),
     path("api/v1/public/incidents/", PublicIncidentListAPIView.as_view(), name="public-incidents"),
-    path("api/v1/public/incidents/<uuid:pk>/", PublicIncidentDetailAPIView.as_view(), name="public-incident-detail"),
+    path("api/v1/public/incidents/<str:pk>/", PublicIncidentDetailAPIView.as_view(), name="public-incident-detail"),
+    path("api/v1/events/", IngestionEventsAPIView.as_view(), name="events"),
 
     # Live Event Simulator & Ingestion Studio
     path("api/v1/simulator/dispatch/", SimulatorDispatchAPIView.as_view(), name="simulator-dispatch"),

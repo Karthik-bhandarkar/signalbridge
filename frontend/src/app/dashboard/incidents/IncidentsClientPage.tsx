@@ -4,15 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import IncidentSectionsBoard from "@/components/ops/IncidentSectionsBoard";
 import IncidentDetailDrawer, { IncidentDetailData } from "@/components/ops/IncidentDetailDrawer";
 import OperatorLoginModal from "@/components/ops/OperatorLoginModal";
+import { useAuth } from "@/lib/AuthContext";
+import { apiClient } from "@/lib/api";
+import { useLiveStream } from "@/lib/useLiveStream";
 
-export default function IncidentsClientPage({
-  initialUser,
-}: {
-  initialUser?: { name: string; email: string; role: string } | null;
-}) {
-  const [user, setUser] = useState<{ username: string; role: string } | null>(
-    initialUser ? { username: initialUser.name, role: initialUser.role } : null
-  );
+export default function IncidentsClientPage() {
+  const { isOperator, openLoginModal } = useAuth();
   const [incidents, setIncidents] = useState<IncidentDetailData[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailData | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -20,100 +17,83 @@ export default function IncidentsClientPage({
 
   const fetchIncidents = useCallback(async () => {
     try {
-      const res = await fetch(`/api/v1/public/incidents/?limit=100&include_simulated=true`);
-      if (res.ok) {
-        const data = await res.json();
-        setIncidents(data);
+      const data = await apiClient.incidents.list({
+        limit: "100",
+        include_simulated: showSimulated ? "true" : "false",
+      });
+      if (Array.isArray(data)) {
+        setIncidents(data as IncidentDetailData[]);
       }
     } catch {
       // ignore
     }
-  }, []);
+  }, [showSimulated]);
 
   useEffect(() => {
-    const timer = setTimeout(fetchIncidents, 0);
-    const interval = setInterval(fetchIncidents, 3500);
+    let mounted = true;
+    apiClient.incidents
+      .list({
+        limit: "100",
+        include_simulated: showSimulated ? "true" : "false",
+      })
+      .then((data) => {
+        if (mounted && Array.isArray(data)) {
+          setIncidents(data as IncidentDetailData[]);
+        }
+      })
+      .catch(() => {});
     return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
+      mounted = false;
     };
-  }, [fetchIncidents]);
+  }, [showSimulated]);
 
-  // SSE Stream listener
-  useEffect(() => {
-    let evtSource: EventSource | null = null;
-    try {
-      evtSource = new EventSource("/api/v1/stream/");
-      evtSource.addEventListener("incident_update", () => {
-        fetchIncidents();
-      });
-    } catch {
-      // fallback to polling
-    }
-    return () => {
-      if (evtSource) evtSource.close();
-    };
-  }, [fetchIncidents]);
+  // Connect to live SSE stream via resilient hook
+  useLiveStream({
+    url: "/api/v1/stream/",
+    onIncidentUpdate: () => {
+      fetchIncidents();
+    },
+    onPoll: () => {
+      fetchIncidents();
+    },
+    pollIntervalMs: 3500,
+  });
 
   async function handleAcknowledge(id: string) {
-    if (!user) {
-      setAuthModalOpen(true);
+    if (!isOperator) {
+      openLoginModal();
       return;
     }
 
     setIncidents((prev) =>
-      prev.map((inc) => (inc.id === id ? { ...inc, status: "ACKNOWLEDGED", acknowledged_at: new Date().toISOString() } : inc))
+      prev.map((inc) =>
+        inc.id === id ? { ...inc, status: "ACKNOWLEDGED", acknowledged_at: new Date().toISOString() } : inc
+      )
     );
 
     try {
-      let csrfToken = "";
-      try {
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) csrfToken = (await csrfRes.json()).csrfToken || "";
-      } catch {}
-
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-      const res = await fetch(`/api/v1/incidents/${id}/acknowledge/`, { method: "POST", headers });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) setAuthModalOpen(true);
-        fetchIncidents();
-      }
+      await apiClient.incidents.acknowledge(id);
+      fetchIncidents();
     } catch {
       fetchIncidents();
     }
   }
 
   async function handleResolve(id: string, notes: string) {
-    if (!user) {
-      setAuthModalOpen(true);
+    if (!isOperator) {
+      openLoginModal();
       return;
     }
 
     setIncidents((prev) =>
-      prev.map((inc) => (inc.id === id ? { ...inc, status: "RESOLVED", resolved_at: new Date().toISOString() } : inc))
+      prev.map((inc) =>
+        inc.id === id ? { ...inc, status: "RESOLVED", resolved_at: new Date().toISOString() } : inc
+      )
     );
 
     try {
-      let csrfToken = "";
-      try {
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) csrfToken = (await csrfRes.json()).csrfToken || "";
-      } catch {}
-
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-      const res = await fetch(`/api/v1/incidents/${id}/resolve/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ resolution_notes: notes }),
-      });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) setAuthModalOpen(true);
-        fetchIncidents();
-      }
+      await apiClient.incidents.resolve(id, notes);
+      fetchIncidents();
     } catch {
       fetchIncidents();
     }
@@ -121,12 +101,8 @@ export default function IncidentsClientPage({
 
   async function handleSelectIncident(inc: IncidentDetailData) {
     try {
-      const res = await fetch(`/api/v1/public/incidents/${inc.id}/`);
-      if (res.ok) {
-        setSelectedIncident(await res.json());
-      } else {
-        setSelectedIncident(inc);
-      }
+      const full = await apiClient.incidents.detail(inc.id);
+      setSelectedIncident(full as IncidentDetailData);
     } catch {
       setSelectedIncident(inc);
     }
@@ -146,8 +122,8 @@ export default function IncidentsClientPage({
         onAcknowledge={handleAcknowledge}
         onResolve={handleResolve}
         onSelectIncident={handleSelectIncident}
-        isOperator={Boolean(user)}
-        onRequestAuth={() => setAuthModalOpen(true)}
+        isOperator={isOperator}
+        onRequestAuth={openLoginModal}
         showSimulated={showSimulated}
         setShowSimulated={setShowSimulated}
       />
@@ -157,19 +133,17 @@ export default function IncidentsClientPage({
         onClose={() => setSelectedIncident(null)}
         onAcknowledge={handleAcknowledge}
         onResolve={handleResolve}
-        isOperator={Boolean(user)}
-        onRequestAuth={() => setAuthModalOpen(true)}
+        isOperator={isOperator}
+        onRequestAuth={openLoginModal}
       />
 
       <OperatorLoginModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={(u) => {
-          setUser(u);
+        onSuccess={() => {
           fetchIncidents();
         }}
       />
     </div>
   );
 }
-

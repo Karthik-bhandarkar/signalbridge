@@ -29,6 +29,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
+from rest_framework.permissions import IsAuthenticated
 from apps.core.permissions import IsOperatorOrHigher
 from apps.core.dsa.sliding_window import shared_rate_limiter
 from apps.webhooks.models import WebhookSource, IngestedPayload
@@ -67,7 +68,7 @@ class SimulatorDispatchAPIView(APIView):
     """
     Simulates live webhook arrival through the actual ingestion pipeline.
     """
-    permission_classes = [IsOperatorOrHigher]
+    permission_classes = [IsAuthenticated, IsOperatorOrHigher]
 
     @extend_schema(
         summary="Dispatch Live Simulated Webhook Alert",

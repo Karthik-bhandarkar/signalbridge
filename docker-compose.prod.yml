@@ -40,7 +40,7 @@ services:
     environment:
       - PORT=3000
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-signalbridge_db}
+      - DJANGO_URL=http://web:8000
     networks:
       - signalbridge_prod_network
 
@@ -62,7 +62,7 @@ services:
       --bind 0.0.0.0:8000
       --workers ${GUNICORN_WORKERS:-2}
       --worker-class gthread
-      --threads ${GUNICORN_THREADS:-2}
+      --threads ${GUNICORN_THREADS:-8}
       --worker-tmp-dir /dev/shm
       --timeout 60
       --graceful-timeout 30

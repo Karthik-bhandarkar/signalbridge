@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, User, Copy, Check, ArrowRight, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
-import { DEMO_CREDENTIALS } from "@/lib/constants";
+import { Eye, EyeOff, Lock, User, Copy, Check, ArrowRight, ShieldCheck, AlertCircle, RefreshCw, Sparkles } from "lucide-react";
+import { PUBLIC_DEMO_ACCOUNTS } from "@/lib/constants";
+import { apiClient, ApiError } from "@/lib/api";
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onSuccess?: (user: any) => void;
+}
+
+export default function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -20,62 +25,54 @@ export default function LoginForm() {
       setCopiedKey(key);
       setTimeout(() => setCopiedKey(null), 2000);
     } catch {
-      // ignore
+      // Ignore clipboard failure
     }
   }
 
-  async function handleLogin(uName: string, pWord: string) {
+  async function performLogin(uName: string, pWord: string) {
+    if (!uName || !pWord) {
+      setError("Please provide both username and password.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Establish Next.js session first
-      const formData = new FormData();
-      formData.append("username", uName);
-      formData.append("password", pWord);
+      const loginRes = await apiClient.auth.login(uName, pWord);
+      const user = loginRes.user;
 
-      const actionRes = await fetch("/api/auth/session-login", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!actionRes.ok) {
-        const data = await actionRes.json().catch(() => ({}));
-        throw new Error(data.error || "Invalid username or password.");
+      if (onSuccess) {
+        onSuccess(user);
+      } else {
+        router.push("/dashboard");
       }
-
-      // 2. Best-effort Django session sync (if available)
-      try {
-        let csrfToken = "";
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) {
-          const csrfData = await csrfRes.json();
-          csrfToken = csrfData.csrfToken || "";
-        }
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-        await fetch("/api/v1/auth/login/", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ username: uName, password: pWord }),
-        });
-      } catch {
-        // Ignore backend sync failure in standalone/mock modes
-      }
-
-      // 3. Navigate directly to dashboard
-      window.location.href = "/dashboard";
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Invalid username or password.";
-      setError(msg);
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setError("Invalid credentials. Please verify your username and password.");
+        } else if (err.status === 429) {
+          setError("Too many login attempts. Please wait 1 minute before retrying.");
+        } else {
+          setError(err.message || "Authentication failed. Check your network connection.");
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Authentication error occurred.");
+      }
+    } finally {
       setLoading(false);
     }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    handleLogin(username, password);
+    performLogin(username, password);
+  }
+
+  function handleQuickFillAndSignIn(demoAccount: { username: string; password: string }) {
+    setUsername(demoAccount.username);
+    setPassword(demoAccount.password);
+    performLogin(demoAccount.username, demoAccount.password);
   }
 
   return (
@@ -92,37 +89,43 @@ export default function LoginForm() {
         {/* Username Field */}
         <div>
           <label className="block font-mono text-[11px] font-semibold uppercase tracking-wider text-[#8B949E] mb-1.5">
-            Username
+            Username / Operator ID
           </label>
           <div className="relative">
             <User size={14} className="absolute left-3 top-3 text-[#8B949E]" />
             <input
               type="text"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="e.g. demo.operator"
               autoComplete="username"
               required
-              placeholder="operator ID"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-xl border border-[#232C3D] bg-[#0A0E14] pl-9 pr-3.5 py-2 text-sm text-[#E6EAF2] placeholder-[#8B949E] focus:border-[#4F8CFF] focus:outline-none transition-colors"
+              className="w-full rounded-xl border border-[#232C3D] bg-[#161D2B] pl-9 pr-3.5 py-2.5 text-sm text-[#E6EAF2] placeholder-[#8B949E]/50 focus:border-[#4F8CFF] focus:outline-none focus:ring-1 focus:ring-[#4F8CFF] transition-all"
             />
           </div>
         </div>
 
-        {/* Password Field with Show/Hide Toggle */}
+        {/* Password Field */}
         <div>
           <label className="block font-mono text-[11px] font-semibold uppercase tracking-wider text-[#8B949E] mb-1.5">
-            Password
+            Secret Passkey
           </label>
           <div className="relative">
             <Lock size={14} className="absolute left-3 top-3 text-[#8B949E]" />
             <input
               type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="••••••••••••"
               autoComplete="current-password"
               required
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-[#232C3D] bg-[#0A0E14] pl-9 pr-10 py-2 text-sm text-[#E6EAF2] placeholder-[#8B949E] focus:border-[#4F8CFF] focus:outline-none transition-colors"
+              className="w-full rounded-xl border border-[#232C3D] bg-[#161D2B] pl-9 pr-10 py-2.5 text-sm text-[#E6EAF2] placeholder-[#8B949E]/50 focus:border-[#4F8CFF] focus:outline-none focus:ring-1 focus:ring-[#4F8CFF] transition-all font-mono"
             />
             <button
               type="button"
@@ -135,204 +138,108 @@ export default function LoginForm() {
           </div>
         </div>
 
-        {/* Sign In Button */}
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8CFF] py-2.5 text-xs font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all shadow-md shadow-[#4F8CFF]/20 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8CFF] py-2.5 text-xs font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all disabled:opacity-50 shadow-md shadow-[#4F8CFF]/20 active:scale-[0.99] cursor-pointer"
         >
           {loading ? (
             <>
               <RefreshCw size={14} className="animate-spin" />
-              <span>Authenticating Session...</span>
+              <span>Verifying Operator Credentials...</span>
             </>
           ) : (
             <>
-              <span>Sign In to Mission Control</span>
-              <ArrowRight size={14} />
+              <ShieldCheck size={14} />
+              <span>Authenticate Operator Session</span>
             </>
           )}
         </button>
       </form>
 
-      {/* Demo Access Card */}
-      <div className="rounded-2xl border border-[#232C3D] bg-[#0A0E14] p-4.5 shadow-xl space-y-3.5">
-        <div className="flex items-center justify-between border-b border-[#232C3D] pb-2.5">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-[#4F8CFF]" />
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#E6EAF2]">
-              Demo Access
-            </h3>
-          </div>
-          <span className="rounded-full bg-[#161D2B] border border-[#232C3D] px-2 py-0.5 font-mono text-[9px] text-[#8B949E]">
-            PUBLIC EVALUATION
-          </span>
+      {/* Demo Credentials Card */}
+      <div className="rounded-2xl border border-[#232C3D] bg-[#161D2B]/70 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#E6EAF2]">
+          <Sparkles size={14} className="text-[#F0B232]" />
+          <span>Public Demo Access (Instant One-Click Sign In)</span>
         </div>
-
         <p className="text-[11px] text-[#8B949E] leading-relaxed">
-          Evaluate full triage capabilities with seeded demo accounts. No setup required.
+          Select an authorized demo role below for evaluation. Credentials are pre-configured with active session permissions.
         </p>
 
-        {/* System Admin */}
-        <div className="rounded-xl border border-[#388BFD]/40 bg-[#111722] p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#E6EAF2]">
-              {DEMO_CREDENTIALS.admin.name}
-            </span>
-            <span className="font-mono text-[9px] font-semibold text-[#58A6FF] uppercase bg-[#388BFD]/15 border border-[#388BFD]/40 px-1.5 py-0.5 rounded">
-              Full Admin Privileges
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-            {/* Username */}
-            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
-              <span className="text-[#8B949E] truncate">{DEMO_CREDENTIALS.admin.username}</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(DEMO_CREDENTIALS.admin.username, "adm_u")}
-                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
-                title="Copy username"
-              >
-                {copiedKey === "adm_u" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
-              </button>
+        <div className="space-y-2.5 pt-1">
+          {/* Demo Operator */}
+          <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#4F8CFF]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4F8CFF]" />
+                {PUBLIC_DEMO_ACCOUNTS.operator.label}
+              </span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#4F8CFF]/10 text-[#4F8CFF] border border-[#4F8CFF]/20">
+                Full Triage Privileges
+              </span>
             </div>
 
-            {/* Password */}
-            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
-              <span className="text-[#8B949E] truncate">••••••••••••</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(DEMO_CREDENTIALS.admin.password, "adm_p")}
-                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
-                title="Copy password"
-              >
-                {copiedKey === "adm_p" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
-              </button>
-            </div>
-          </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+              <div className="flex items-center justify-between bg-[#161D2B] px-2.5 py-1.5 rounded-lg border border-[#232C3D]">
+                <span className="text-[#8B949E] truncate mr-1">{PUBLIC_DEMO_ACCOUNTS.operator.username}</span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(PUBLIC_DEMO_ACCOUNTS.operator.username, "op_user")}
+                  className="text-[#8B949E] hover:text-[#E6EAF2] transition-colors shrink-0"
+                  title="Copy username"
+                >
+                  {copiedKey === "op_user" ? <Check size={12} className="text-[#3FB950]" /> : <Copy size={12} />}
+                </button>
+              </div>
 
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              setUsername(DEMO_CREDENTIALS.admin.username);
-              setPassword(DEMO_CREDENTIALS.admin.password);
-              handleLogin(DEMO_CREDENTIALS.admin.username, DEMO_CREDENTIALS.admin.password);
-            }}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#388BFD]/50 bg-[#388BFD]/20 py-1.5 text-xs font-semibold text-[#58A6FF] hover:bg-[#388BFD]/30 transition-all"
-          >
-            <span>Fill & Sign In as Admin</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
-
-        {/* Demo Operator */}
-        <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#E6EAF2]">
-              {DEMO_CREDENTIALS.operator.name}
-            </span>
-            <span className="font-mono text-[9px] font-semibold text-[#4F8CFF] uppercase bg-[#4F8CFF]/10 border border-[#4F8CFF]/30 px-1.5 py-0.5 rounded">
-              Triage & Simulator
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-            {/* Username */}
-            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
-              <span className="text-[#8B949E] truncate">{DEMO_CREDENTIALS.operator.username}</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(DEMO_CREDENTIALS.operator.username, "op_u")}
-                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
-                title="Copy username"
-              >
-                {copiedKey === "op_u" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
-              </button>
+              <div className="flex items-center justify-between bg-[#161D2B] px-2.5 py-1.5 rounded-lg border border-[#232C3D]">
+                <span className="text-[#8B949E] truncate mr-1">••••••••••••</span>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(PUBLIC_DEMO_ACCOUNTS.operator.password, "op_pw")}
+                  className="text-[#8B949E] hover:text-[#E6EAF2] transition-colors shrink-0"
+                  title="Copy passkey"
+                >
+                  {copiedKey === "op_pw" ? <Check size={12} className="text-[#3FB950]" /> : <Copy size={12} />}
+                </button>
+              </div>
             </div>
 
-            {/* Password */}
-            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
-              <span className="text-[#8B949E] truncate">••••••••••••</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(DEMO_CREDENTIALS.operator.password, "op_p")}
-                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
-                title="Copy password"
-              >
-                {copiedKey === "op_p" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleQuickFillAndSignIn(PUBLIC_DEMO_ACCOUNTS.operator)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#4F8CFF]/15 border border-[#4F8CFF]/40 py-1.5 text-xs font-medium text-[#4F8CFF] hover:bg-[#4F8CFF]/25 transition-all cursor-pointer"
+            >
+              <span>1-Click Sign In as Demo Operator</span>
+              <ArrowRight size={13} />
+            </button>
           </div>
 
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              setUsername(DEMO_CREDENTIALS.operator.username);
-              setPassword(DEMO_CREDENTIALS.operator.password);
-              handleLogin(DEMO_CREDENTIALS.operator.username, DEMO_CREDENTIALS.operator.password);
-            }}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 py-1.5 text-xs font-semibold text-[#58A6FF] hover:bg-[#4F8CFF]/25 transition-all"
-          >
-            <span>Fill & Sign In as Demo Operator</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
-
-        {/* Demo Viewer */}
-        <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#E6EAF2]">
-              {DEMO_CREDENTIALS.viewer.name}
-            </span>
-            <span className="font-mono text-[9px] font-semibold text-[#8B949E] uppercase bg-[#161D2B] border border-[#232C3D] px-1.5 py-0.5 rounded">
-              Read-Only
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-            {/* Username */}
-            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
-              <span className="text-[#8B949E] truncate">{DEMO_CREDENTIALS.viewer.username}</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(DEMO_CREDENTIALS.viewer.username, "vi_u")}
-                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
-                title="Copy username"
-              >
-                {copiedKey === "vi_u" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
-              </button>
+          {/* Demo Viewer */}
+          <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#8B949E]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8B949E]" />
+                {PUBLIC_DEMO_ACCOUNTS.viewer.label}
+              </span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#8B949E]/10 text-[#8B949E] border border-[#8B949E]/20">
+                Read-Only Observer
+              </span>
             </div>
 
-            {/* Password */}
-            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
-              <span className="text-[#8B949E] truncate">••••••••••••</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(DEMO_CREDENTIALS.viewer.password, "vi_p")}
-                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
-                title="Copy password"
-              >
-                {copiedKey === "vi_p" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleQuickFillAndSignIn(PUBLIC_DEMO_ACCOUNTS.viewer)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#232C3D] py-1.5 text-xs font-medium text-[#E6EAF2] hover:bg-[#2A354A] transition-all cursor-pointer"
+            >
+              <span>1-Click Sign In as Demo Viewer</span>
+              <ArrowRight size={13} />
+            </button>
           </div>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              setUsername(DEMO_CREDENTIALS.viewer.username);
-              setPassword(DEMO_CREDENTIALS.viewer.password);
-              handleLogin(DEMO_CREDENTIALS.viewer.username, DEMO_CREDENTIALS.viewer.password);
-            }}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#232C3D] bg-[#161D2B] py-1.5 text-xs font-semibold text-[#8B949E] hover:text-[#E6EAF2] hover:bg-[#232C3D]/60 transition-all"
-          >
-            <span>Fill & Sign In as Demo Viewer</span>
-            <ArrowRight size={13} />
-          </button>
         </div>
       </div>
     </div>

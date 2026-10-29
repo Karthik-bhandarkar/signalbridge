@@ -33,24 +33,25 @@ resource "aws_cloudfront_distribution" "app_distribution" {
     }
   }
 
-  # 1. Default Cache Behavior (React SPA Frontend)
+  # 1. Default Cache Behavior (Next.js Application - Dynamic SSR & Forwarding)
   default_cache_behavior {
     target_origin_id       = "SignalBridge-ALB-Origin"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
 
     forwarded_values {
-      query_string = false
+      query_string = true
+      headers      = ["Host", "Origin", "Referer", "Accept", "X-CSRFToken"]
       cookies {
-        forward = "none"
+        forward = "all"
       }
     }
 
     min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
+    default_ttl = 0
+    max_ttl     = 0
   }
 
   # 2. Dynamic Webhooks Behavior (POST /api/v1/webhooks/* -> Never Cache, Forward All Headers)

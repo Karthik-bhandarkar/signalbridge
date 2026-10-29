@@ -1,26 +1,21 @@
-export const DEMO_CREDENTIALS = {
-  email: "demo.operator@signalbridge.io",
-  password: "OperatorPass!2026#Secure",
-  admin: {
-    name: "System Admin",
-    username: "Admin",
-    password: "Admin@123",
-    role: "admin",
-    email: "admin@signalbridge.io",
-  },
+/**
+ * Public Demo Accounts for SignalBridge
+ * Safe for public consumption — these accounts have non-privileged operator/viewer access only.
+ * Real administrative credentials must never be committed to source control.
+ */
+export const PUBLIC_DEMO_ACCOUNTS = {
   operator: {
-    name: "Demo Operator",
+    label: "Demo Operator",
     username: "demo.operator",
-    password: "OperatorPass!2026#Secure",
-    role: "operator",
-    email: "demo.operator@signalbridge.io",
+    password: "DemoOperator2026!#Secure",
+    role: "OPERATOR",
+    description: "Triage incidents (Acknowledge, Resolve), run live simulator, view logs.",
   },
   viewer: {
-    name: "Demo Viewer",
+    label: "Demo Viewer",
     username: "demo.viewer",
-    password: "ViewerPass!2026#Secure",
-    role: "viewer",
-    email: "demo.viewer@signalbridge.io",
+    password: "DemoViewer2026!#Secure",
+    role: "VIEWER",
+    description: "Read-only operational observer access.",
   },
 };
-

@@ -39,3 +39,4 @@ class VersionAPIView(APIView):
             "build_time": build_time,
             "environment": os.environ.get("DJANGO_SETTINGS_MODULE", "").split(".")[-1] or "production",
         }, status=status.HTTP_200_OK)
+

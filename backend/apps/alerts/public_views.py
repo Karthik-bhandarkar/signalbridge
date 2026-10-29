@@ -44,26 +44,32 @@ class PublicOverviewAPIView(APIView):
     def get(self, request):
         now = timezone.now()
         day_ago = now - timedelta(hours=24)
+        include_simulated = request.query_params.get("include_simulated", "true").lower() in ("true", "1")
 
         # 1. Total deliveries 24h & lifetime:
         deliveries_24h = IngestedPayload.objects.filter(created_at__gte=day_ago).count()
         total_deliveries = IngestedPayload.objects.count()
 
-        # 2. Incident counts:
-        open_incidents = Incident.objects.filter(status=Incident.IncidentStatus.OPEN).count()
-        critical_open = Incident.objects.filter(
+        # 2. Incident base query:
+        incidents_qs = Incident.objects.all()
+        if not include_simulated:
+            incidents_qs = incidents_qs.filter(is_simulated=False)
+
+        # Incident counts:
+        open_incidents = incidents_qs.filter(status=Incident.IncidentStatus.OPEN).count()
+        critical_open = incidents_qs.filter(
             status=Incident.IncidentStatus.OPEN,
             severity=Incident.SeverityLevel.CRITICAL
         ).count()
-        ack_incidents = Incident.objects.filter(status=Incident.IncidentStatus.ACKNOWLEDGED).count()
-        resolved_24h = Incident.objects.filter(
+        ack_incidents = incidents_qs.filter(status=Incident.IncidentStatus.ACKNOWLEDGED).count()
+        resolved_24h = incidents_qs.filter(
             status=Incident.IncidentStatus.RESOLVED,
             resolved_at__gte=day_ago
         ).count()
-        total_incidents = Incident.objects.count()
+        total_incidents = incidents_qs.count()
 
         # 3. Real MTTR (Mean Time to Resolution) computed strictly from resolved_at - first_seen_at:
-        resolved_incidents = Incident.objects.filter(
+        resolved_incidents = incidents_qs.filter(
             status=Incident.IncidentStatus.RESOLVED,
             resolved_at__isnull=False,
         )
@@ -75,7 +81,7 @@ class PublicOverviewAPIView(APIView):
         mttr_minutes = round(sum(mttr_durations) / len(mttr_durations), 1) if mttr_durations else 0.0
 
         # 4. Real MTTA (Mean Time to Acknowledge):
-        acknowledged_incidents = Incident.objects.filter(acknowledged_at__isnull=False)
+        acknowledged_incidents = incidents_qs.filter(acknowledged_at__isnull=False)
         mtta_durations = [
             (inc.acknowledged_at - inc.first_seen_at).total_seconds() / 60.0
             for inc in acknowledged_incidents
@@ -84,19 +90,40 @@ class PublicOverviewAPIView(APIView):
         mtta_minutes = round(sum(mtta_durations) / len(mtta_durations), 1) if mtta_durations else 0.0
 
         # 5. Correlation ratio:
-        total_alerts = Alert.objects.count()
+        alerts_qs = Alert.objects.all()
+        if not include_simulated:
+            alerts_qs = alerts_qs.filter(incident__is_simulated=False)
+        total_alerts = alerts_qs.count()
         correlation_ratio = round(total_alerts / max(1, total_incidents), 2)
 
-        # 5b. Replay suppression rate from IngestionMetric / alerts:
+        # 5b. Replay suppression rate from IngestionMetric / IngestedPayload:
         from apps.analytics.models import IngestionMetric
         from django.db.models import Sum
-        metric_agg = IngestionMetric.objects.aggregate(
+
+        metric_agg_24h = IngestionMetric.objects.filter(window_start__gte=day_ago).aggregate(
             rec=Sum("total_received"),
             dup=Sum("total_duplicates")
         )
-        rec = metric_agg.get("rec") or 0
-        dup = metric_agg.get("dup") or 0
-        replay_suppression_rate = round((dup / rec) * 100.0, 1) if rec > 0 else 0.0
+        rec_24h = metric_agg_24h.get("rec") or 0
+        dup_24h = metric_agg_24h.get("dup") or 0
+
+        if rec_24h > 0:
+            replay_suppression_rate = round((dup_24h / rec_24h) * 100.0, 1)
+        else:
+            dup_payloads = IngestedPayload.objects.filter(
+                created_at__gte=day_ago,
+                error_message__icontains="duplicate"
+            ).count()
+            if (deliveries_24h + dup_payloads) > 0:
+                replay_suppression_rate = round((dup_payloads / (deliveries_24h + dup_payloads)) * 100.0, 1)
+            else:
+                metric_agg_life = IngestionMetric.objects.aggregate(
+                    rec=Sum("total_received"),
+                    dup=Sum("total_duplicates")
+                )
+                rec_life = metric_agg_life.get("rec") or 0
+                dup_life = metric_agg_life.get("dup") or 0
+                replay_suppression_rate = round((dup_life / rec_life) * 100.0, 1) if rec_life > 0 else 0.0
 
         # 6. Overall System Health Status:
         if critical_open > 0:

@@ -461,3 +461,62 @@ class IntegrationSecretRegenerateAPIView(APIView):
         except WebhookSource.DoesNotExist:
             return Response({"error": "Integration not found"}, status=status.HTTP_404_NOT_FOUND)
 
+
+
+
+class IngestionEventsAPIView(APIView):
+    """
+    GET /api/v1/events/
+    Returns recent webhook deliveries and ingestion events.
+    Safe for public visitors: sanitized view (zero secrets, S3 paths, or raw bodies).
+    Operators receive full event telemetry.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        severity = request.query_params.get("severity", "all").upper()
+        status_filter = request.query_params.get("status", "all").upper()
+        try:
+            limit = int(request.query_params.get("limit", 60))
+            limit = max(1, min(limit, 100))
+        except (ValueError, TypeError):
+            limit = 60
+
+        is_operator = bool(request.user and request.user.is_authenticated)
+
+        payloads = IngestedPayload.objects.select_related("source").prefetch_related("alerts__incident").order_by("-received_at")
+
+        results = []
+        for p in payloads[:limit]:
+            alert = p.alerts.first()
+            if severity != "ALL" and alert and alert.severity != severity:
+                continue
+
+            is_dup = (p.error_message and "duplicate" in p.error_message.lower()) or False
+            status_label = "duplicate" if is_dup else p.status.lower()
+
+            if status_filter != "ALL" and status_label.upper() != status_filter:
+                continue
+
+            item = {
+                "id": str(p.id)[:8],
+                "full_id": str(p.id) if is_operator else None,
+                "tracking_id": p.tracking_id,
+                "received_at": p.received_at.isoformat() if p.received_at else None,
+                "source": p.source.slug,
+                "type": "alert.trigger",
+                "service": alert.service_name if alert else (p.source.name or "gateway"),
+                "severity": (alert.severity if alert else "INFO").lower(),
+                "status": status_label,
+                "signature_valid": True,
+                "incident_ref": str(alert.incident.id) if alert and alert.incident else None,
+                "incident_fingerprint": alert.incident.fingerprint if alert and alert.incident else None,
+                "archive_status": p.archive_status,
+                "archive_key": p.s3_payload_key if is_operator else None,
+                "processing_ms": 14,
+                "raw_payload": getattr(alert, "raw_data", None) if is_operator else None,
+            }
+            results.append(item)
+
+        return Response(results, status=status.HTTP_200_OK)

@@ -3,23 +3,21 @@
 import { useEffect, useState, useCallback, useTransition } from "react";
 import Link from "next/link";
 import {
-  Activity,
   AlertTriangle,
-  ArrowRight,
   CheckCircle2,
-  Filter,
-  Layers,
   Radio,
   RefreshCw,
   Search,
   Shield,
-  Zap,
 } from "lucide-react";
 
 import LiveTelemetryBeacon from "@/components/ops/LiveTelemetryBeacon";
 import SimulatorStudio from "@/components/ops/SimulatorStudio";
 import IncidentDetailDrawer, { IncidentDetailData } from "@/components/ops/IncidentDetailDrawer";
 import OperatorLoginModal from "@/components/ops/OperatorLoginModal";
+import { useAuth } from "@/lib/AuthContext";
+import { apiClient } from "@/lib/api";
+import { useLiveStream } from "@/lib/useLiveStream";
 
 interface OverviewKPIs {
   status: string;
@@ -53,14 +51,8 @@ interface IncidentRecord {
   duration_seconds?: number;
 }
 
-export default function LiveDashboard({
-  initialUser,
-}: {
-  initialUser?: { name: string; email: string; role: string } | null;
-}) {
-  const [user, setUser] = useState<{ username: string; role: string } | null>(
-    initialUser ? { username: initialUser.name, role: initialUser.role } : null
-  );
+export default function LiveDashboard() {
+  const { user, isOperator, openLoginModal } = useAuth();
   const [kpis, setKpis] = useState<OverviewKPIs>({
     status: "operational",
     open_incidents: 0,
@@ -80,31 +72,30 @@ export default function LiveDashboard({
   const [search, setSearch] = useState("");
   const [includeSimulated, setIncludeSimulated] = useState(true);
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailData | null>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [streamStatus, setStreamStatus] = useState<"live" | "polling" | "reconnecting" | "offline">("live");
+  const [localModalOpen, setLocalModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // 1. Fetch live KPIs
   const fetchOverview = useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/public/overview/");
-      if (res.ok) {
-        const data = await res.json();
-        setKpis(data);
+      const data = await apiClient.telemetry.overview(includeSimulated);
+      if (data && typeof data === "object") {
+        setKpis((prev) => ({ ...prev, ...(data as OverviewKPIs) }));
       }
     } catch {
       // Continue silently
     }
-  }, []);
+  }, [includeSimulated]);
 
   // 2. Fetch live incidents
   const fetchIncidents = useCallback(async () => {
     try {
-      const url = `/api/v1/public/incidents/?limit=40&include_simulated=${includeSimulated}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setIncidents(data);
+      const data = await apiClient.incidents.list({
+        limit: "40",
+        include_simulated: includeSimulated ? "true" : "false",
+      });
+      if (Array.isArray(data)) {
+        setIncidents(data as IncidentRecord[]);
       }
     } catch {
       // Continue silently
@@ -119,79 +110,27 @@ export default function LiveDashboard({
     });
   }, [fetchOverview, fetchIncidents]);
 
-  // Initial load and periodic polling (every 3.5 seconds)
+  // Initial load and periodic polling fallback
   useEffect(() => {
     refreshAll();
-    const interval = setInterval(refreshAll, 3500);
-    const openCount = includeSimulated
-    ? kpis.open_incidents
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
-  const criticalCount = includeSimulated
-    ? kpis.critical_open
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
-
-  return () => clearInterval(interval);
   }, [refreshAll]);
 
-  // SSE Stream listener with auto-fallback
-  useEffect(() => {
-    let evtSource: EventSource | null = null;
-    try {
-      evtSource = new EventSource("/api/v1/stream/");
-
-      evtSource.onopen = () => {
-        setStreamStatus("live");
-      };
-
-      evtSource.addEventListener("incident_update", (e) => {
-        try {
-          const updated = JSON.parse(e.data);
-          if (Array.isArray(updated) && updated.length > 0) {
-            fetchIncidents();
-            fetchOverview();
-          }
-        } catch {
-          // ignore parse errors
-        }
-      });
-
-      evtSource.addEventListener("ping", () => {
-        setStreamStatus("live");
-      });
-
-      evtSource.onerror = () => {
-        // SSE buffering or disconnect, gracefully fallback to polling
-        setStreamStatus("polling");
-      };
-    } catch {
-      // EventSource unavailable or errored synchronously
-      const timer = setTimeout(() => setStreamStatus("polling"), 0);
-      const openCount = includeSimulated
-    ? kpis.open_incidents
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
-  const criticalCount = includeSimulated
-    ? kpis.critical_open
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
-
-  return () => clearTimeout(timer);
-    }
-
-    const openCount = includeSimulated
-    ? kpis.open_incidents
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
-  const criticalCount = includeSimulated
-    ? kpis.critical_open
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
-
-  return () => {
-      if (evtSource) evtSource.close();
-    };
-  }, [fetchIncidents, fetchOverview]);
+  // Connect to live SSE stream via resilient hook
+  const { status: streamStatus } = useLiveStream({
+    url: "/api/v1/stream/",
+    onIncidentUpdate: () => {
+      refreshAll();
+    },
+    onPoll: () => {
+      refreshAll();
+    },
+    pollIntervalMs: 3500,
+  });
 
   // Incident Actions: Acknowledge & Resolve
   async function handleAcknowledge(id: string) {
-    if (!user) {
-      setAuthModalOpen(true);
+    if (!isOperator) {
+      openLoginModal();
       return;
     }
 
@@ -204,39 +143,16 @@ export default function LiveDashboard({
     }
 
     try {
-      let csrfToken = "";
-      try {
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) {
-          const csrfData = await csrfRes.json();
-          csrfToken = csrfData.csrfToken || "";
-        }
-      } catch {
-        // continue
-      }
-
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-      const res = await fetch(`/api/v1/incidents/${id}/acknowledge/`, {
-        method: "POST",
-        headers,
-      });
-
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) setAuthModalOpen(true);
-        refreshAll();
-      } else {
-        refreshAll();
-      }
+      await apiClient.incidents.acknowledge(id);
+      refreshAll();
     } catch {
       refreshAll();
     }
   }
 
   async function handleResolve(id: string, notes: string) {
-    if (!user) {
-      setAuthModalOpen(true);
+    if (!isOperator) {
+      openLoginModal();
       return;
     }
 
@@ -249,49 +165,20 @@ export default function LiveDashboard({
     }
 
     try {
-      let csrfToken = "";
-      try {
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) {
-          const csrfData = await csrfRes.json();
-          csrfToken = csrfData.csrfToken || "";
-        }
-      } catch {
-        // continue
-      }
-
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-      const res = await fetch(`/api/v1/incidents/${id}/resolve/`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ resolution_notes: notes }),
-      });
-
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) setAuthModalOpen(true);
-        refreshAll();
-      } else {
-        refreshAll();
-      }
+      await apiClient.incidents.resolve(id, notes);
+      refreshAll();
     } catch {
       refreshAll();
     }
   }
 
-  // Fetch full incident details for the drawer
+  // Fetch full incident details for drawer
   async function openIncidentDetail(inc: IncidentRecord) {
     try {
-      const res = await fetch(`/api/v1/public/incidents/${inc.id}/`);
-      if (res.ok) {
-        const full = await res.json();
-        setSelectedIncident(full);
-      } else {
-        setSelectedIncident(inc);
-      }
+      const full = await apiClient.incidents.detail(inc.id);
+      setSelectedIncident(full as IncidentDetailData);
     } catch {
-      setSelectedIncident(inc);
+      setSelectedIncident(inc as unknown as IncidentDetailData);
     }
   }
 
@@ -300,14 +187,7 @@ export default function LiveDashboard({
     if (!includeSimulated && inc.is_simulated) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    const openCount = includeSimulated
-    ? kpis.open_incidents
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
-  const criticalCount = includeSimulated
-    ? kpis.critical_open
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
-
-  return (
+    return (
       inc.service_name.toLowerCase().includes(q) ||
       inc.fingerprint.toLowerCase().includes(q) ||
       inc.severity.toLowerCase().includes(q)
@@ -345,7 +225,7 @@ export default function LiveDashboard({
         <div className="flex items-center gap-2">
           {!user ? (
             <button
-              onClick={() => setAuthModalOpen(true)}
+              onClick={openLoginModal}
               className="flex items-center gap-1.5 rounded-lg border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-3 py-1.5 text-xs font-semibold text-[#58A6FF] hover:bg-[#4F8CFF]/25 transition-colors"
             >
               <Shield size={13} />
@@ -396,7 +276,7 @@ export default function LiveDashboard({
         {/* Open Incidents */}
         <div
           className={`rounded-2xl border p-5 shadow-lg ${
-            kpis.critical_open > 0
+            criticalCount > 0
               ? "border-[#F85149]/40 bg-[#111722]"
               : "border-[#232C3D] bg-[#111722]"
           }`}
@@ -407,7 +287,7 @@ export default function LiveDashboard({
             </span>
             <span
               className={`rounded-md p-1 ${
-                kpis.critical_open > 0
+                criticalCount > 0
                   ? "bg-[#F85149]/15 text-[#F85149]"
                   : "bg-[#3FB950]/15 text-[#3FB950]"
               }`}
@@ -550,14 +430,7 @@ export default function LiveDashboard({
                 ) : (
                   filtered.map((inc) => {
                     const sev = sevColors[inc.severity] || sevColors.MEDIUM;
-                    const openCount = includeSimulated
-    ? kpis.open_incidents
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
-  const criticalCount = includeSimulated
-    ? kpis.critical_open
-    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
-
-  return (
+                    return (
                       <tr
                         key={inc.id}
                         onClick={() => openIncidentDetail(inc)}
@@ -650,8 +523,8 @@ export default function LiveDashboard({
         <div className="xl:col-span-1">
           <SimulatorStudio
             onDispatched={refreshAll}
-            isOperator={Boolean(user)}
-            onRequestAuth={() => setAuthModalOpen(true)}
+            isOperator={isOperator}
+            onRequestAuth={openLoginModal}
           />
         </div>
       </div>
@@ -662,20 +535,18 @@ export default function LiveDashboard({
         onClose={() => setSelectedIncident(null)}
         onAcknowledge={handleAcknowledge}
         onResolve={handleResolve}
-        isOperator={Boolean(user)}
-        onRequestAuth={() => setAuthModalOpen(true)}
+        isOperator={isOperator}
+        onRequestAuth={openLoginModal}
       />
 
       {/* Operator Login Modal */}
       <OperatorLoginModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={(u) => {
-          setUser(u);
+        isOpen={localModalOpen}
+        onClose={() => setLocalModalOpen(false)}
+        onSuccess={() => {
           refreshAll();
         }}
       />
     </div>
   );
 }
-

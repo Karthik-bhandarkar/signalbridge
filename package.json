@@ -1,0 +1,14 @@
+{
+  "name": "signalbridge-root",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:unit": "python -m pytest backend/tests/unit",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

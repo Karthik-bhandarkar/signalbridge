@@ -16,7 +16,6 @@ import { ScrollProgress, ToastHost } from "@/components/marketing/primitives";
 import PremiumBackground from "@/components/marketing/PremiumBackground";
 import SmoothScroll from "@/components/marketing/SmoothScroll";
 import { getLandingMetrics } from "@/lib/metrics";
-import { ensureSeed } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +34,6 @@ export const metadata: Metadata = {
  * explore (Showcase, Quickstart) → links & contact (FinalCTA, Footer).
  */
 export default async function LandingPage() {
-  await ensureSeed();
   const metrics = await getLandingMetrics();
 
   return (

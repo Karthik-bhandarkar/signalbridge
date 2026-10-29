@@ -29,7 +29,7 @@ export default function Nav() {
     let mounted = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 4000);
-    fetch("/api/health", { signal: controller.signal, cache: "no-store" })
+    fetch("/api/health/", { signal: controller.signal, cache: "no-store" })
       .then(async response => {
         if (!response.ok) { if (mounted) setHealth("down"); return; }
         const body = (await response.json()) as { ok?: boolean; checks?: { pipelineWorker?: { status?: string } } };

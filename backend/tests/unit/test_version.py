@@ -13,3 +13,4 @@ def test_version_endpoint():
     assert "build_time" in data
     assert "environment" in data
     assert data["service"] == "SignalBridge Webhook Engine"
+

@@ -114,6 +114,11 @@ class UserProfile(TimeStampedUUIDModel):
         db_index=True,
         help_text="RBAC role defining effective permissions."
     )
+    is_demo_user = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Flag indicating public demo operator or viewer account."
+    )
 
     class Meta:
         verbose_name = "User Profile"

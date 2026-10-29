@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, CheckCircle, Clock, ShieldCheck, Layers, AlertCircle, RefreshCw } from "lucide-react";
+import { Zap, CheckCircle, Clock, ShieldCheck, Layers, AlertCircle, RefreshCw, Lock } from "lucide-react";
+import { apiClient, ApiError } from "@/lib/api";
 
 interface PipelineTimings {
   hmac_verified_ms: number;
@@ -75,44 +76,22 @@ export default function SimulatorStudio({
     setResult(null);
 
     try {
-      // 1. Fetch CSRF token if present
-      let csrfToken = "";
-      try {
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) {
-          const csrfData = await csrfRes.json();
-          csrfToken = csrfData.csrfToken || "";
-        }
-      } catch {
-        // Continue
-      }
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-      const res = await fetch("/api/v1/simulator/dispatch/", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ scenario }),
-      });
-
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          onRequestAuth();
-          throw new Error("Authentication required. Please sign in as an Operator.");
-        }
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}: Simulation dispatch failed.`);
-      }
-
-      const data: DispatchResult = await res.json();
-      setResult(data);
+      const data = await apiClient.simulator.dispatch(scenario);
+      setResult(data as DispatchResult);
       onDispatched();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Dispatch failed.";
-      setError(msg);
+      if (err instanceof ApiError) {
+        if (err.status === 401 || err.status === 403) {
+          onRequestAuth();
+          setError("Operator authentication required to dispatch simulator scenarios.");
+        } else if (err.status === 429) {
+          setError("Simulator rate limit reached (10/min). Please wait a moment.");
+        } else {
+          setError(err.message || "Simulator dispatch failed.");
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Dispatch failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -184,43 +163,43 @@ export default function SimulatorStudio({
           </div>
         </div>
 
-        {/* Error Alert */}
         {error && (
-          <div className="mb-4 rounded-xl border border-[#F85149]/30 bg-[#F85149]/10 p-3 text-xs text-[#F85149] space-y-2">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={14} className="shrink-0" />
-              <span>{error}</span>
-            </div>
-            {error.includes("Authentication") && (
-              <button
-                type="button"
-                onClick={onRequestAuth}
-                className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#F85149]/40 bg-[#F85149]/20 py-1.5 text-xs font-semibold text-white hover:bg-[#F85149]/30 transition-all shadow-sm"
-              >
-                <span>🔑 Click here to Sign In as Demo Operator</span>
-              </button>
-            )}
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-[#F85149]/40 bg-[#F85149]/10 p-2.5 text-xs text-[#F85149]">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
         {/* Dispatch Action Button */}
-        <button
-          onClick={handleDispatch}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8CFF] py-2.5 text-xs font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all shadow-md shadow-[#4F8CFF]/20 disabled:opacity-50"
-        >
-          {loading ? (
-            <>
-              <RefreshCw size={13} className="animate-spin" />
-              <span>Executing Real Pipeline...</span>
-            </>
-          ) : (
-            <>
-              <Zap size={14} />
-              <span>Dispatch Live Webhook</span>
-            </>
-          )}
-        </button>
+        {!isOperator ? (
+          <button
+            type="button"
+            onClick={onRequestAuth}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-[#F0B232]/30 bg-[#F0B232]/10 py-2.5 text-xs font-semibold text-[#F0B232] hover:bg-[#F0B232]/20 transition-all cursor-pointer"
+          >
+            <Lock size={14} />
+            <span>Sign in as demo operator to run the simulator</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleDispatch}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#4F8CFF] py-2.5 text-xs font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all disabled:opacity-50 shadow-md shadow-[#4F8CFF]/20 active:scale-[0.99] cursor-pointer"
+          >
+            {loading ? (
+              <>
+                <RefreshCw size={14} className="animate-spin" />
+                <span>Injecting Live Webhook Pipeline...</span>
+              </>
+            ) : (
+              <>
+                <Zap size={14} />
+                <span>Dispatch Live Webhook</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Real Pipeline Timing Tracker */}
@@ -265,4 +244,3 @@ export default function SimulatorStudio({
     </div>
   );
 }
-
