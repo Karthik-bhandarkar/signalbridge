@@ -34,7 +34,7 @@ def test_seed_demo_users_command():
 
 
 @pytest.mark.django_db
-def test_admin_login_resilience():
+def test_admin_and_demo_login_resilience():
     client = APIClient()
 
     # 1. Login with Admin / Admin@123 before any seeding (self-heals and creates admin)
@@ -49,8 +49,20 @@ def test_admin_login_resilience():
     assert res2.status_code == 200
     assert res2.data["status"] == "success"
 
-    # 3. Check current user session
+    # 3. Login with demo.operator (self-heals and creates operator)
+    res_op = client.post("/api/v1/auth/login/", {"username": "demo.operator", "password": "DemoOperator2026!#Secure"}, format="json")
+    assert res_op.status_code == 200
+    assert res_op.data["status"] == "success"
+    assert res_op.data["user"]["role"] == "OPERATOR"
+
+    # 4. Login with demo.viewer (self-heals and creates viewer)
+    res_vw = client.post("/api/v1/auth/login/", {"username": "demo.viewer", "password": "DemoViewer2026!#Secure"}, format="json")
+    assert res_vw.status_code == 200
+    assert res_vw.data["status"] == "success"
+    assert res_vw.data["user"]["role"] == "VIEWER"
+
+    # 5. Check current user session
     res_me = client.get("/api/v1/auth/me/")
     assert res_me.status_code == 200
     assert res_me.data["authenticated"] is True
-    assert res_me.data["user"]["role"] == "ADMIN"
+    assert res_me.data["user"]["role"] == "VIEWER"
