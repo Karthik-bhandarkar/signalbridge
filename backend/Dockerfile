@@ -38,12 +38,18 @@ RUN pip install --no-cache-dir --upgrade pip \
          && pip install --no-cache-dir -r requirements/local.txt; \
        fi
 
-# 6. Copy the rest of the application codebase
+# 6. Build Arguments for Git Metadata
+ARG GIT_COMMIT_SHA=dev
+ARG BUILD_TIME=unknown
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA} \
+    BUILD_TIME=${BUILD_TIME}
+
+# 7. Copy the rest of the application codebase
 COPY . /app/
 
-# 7. Document the default port exposed by the Django application
+# 8. Document the default port exposed by the Django application
 EXPOSE 8000
 
-# 8. Default production command executed when container is launched (Gunicorn WSGI)
+# 9. Default production command executed when container is launched (Gunicorn WSGI)
 # Overridden in development docker-compose.yml by python manage.py runserver.
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--worker-class", "gthread", "--threads", "2"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--worker-class", "gthread", "--threads", "8"]

@@ -56,6 +56,7 @@ def root_health_view(request):
 
 
 from apps.core.health_views import HealthLiveAPIView, HealthReadyAPIView, SystemHealthDiagnosticAPIView
+from apps.core.version_views import VersionAPIView
 from apps.alerts.public_views import PublicOverviewAPIView, PublicIncidentListAPIView, PublicIncidentDetailAPIView
 from apps.alerts.stream_views import LiveEventStreamAPIView
 from apps.webhooks.simulator_views import SimulatorDispatchAPIView
@@ -83,6 +84,7 @@ urlpatterns = [
     path("api/health", SystemHealthDiagnosticAPIView.as_view(), name="system-health-noslash"),
     path("health/live/", HealthLiveAPIView.as_view(), name="health-live"),
     path("health/ready/", HealthReadyAPIView.as_view(), name="health-ready"),
+    path("api/v1/version/", VersionAPIView.as_view(), name="version"),
 
     # 2. DJANGO ADMIN PORTAL
     path("admin/", admin.site.urls),
