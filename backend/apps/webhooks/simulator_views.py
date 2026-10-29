@@ -624,46 +624,54 @@ class SimulatorResetAPIView(APIView):
         from apps.alerts.models import Incident, Alert
         from datetime import timedelta
         
-        # Purge all simulated data
+        # STRICT RULE: ONLY purge simulated records (is_simulated=True or service_name="simulator")
+        # NEVER delete AWS or real production incidents!
         deleted_sim_incidents, _ = Incident.objects.filter(is_simulated=True).delete()
         deleted_sim_alerts, _ = Alert.objects.filter(is_simulated=True).delete()
         deleted_sim_payloads, _ = IngestedPayload.objects.filter(is_simulated=True).delete()
+        deleted_sim_named, _ = Incident.objects.filter(service_name="simulator").delete()
         
-        # Also clean up any test-generated incidents from automated tests or older runs
-        deleted_test_incidents, _ = Incident.objects.filter(service_name__contains="179").delete()
-        
-        # Ensure 2 clean baseline incidents exist for presentation
+        # Ensure AWS production & core service baseline incidents are present
         now = timezone.now()
-        if not Incident.objects.filter(service_name="payment-gateway").exists():
+        if not Incident.objects.filter(service_name="aws-production-api").exists():
             Incident.objects.create(
-                service_name="payment-gateway",
-                fingerprint="stripe-webhook-timeout",
+                service_name="aws-production-api",
+                fingerprint="rds-pool-exhaustion",
                 status=Incident.IncidentStatus.OPEN,
                 severity=Incident.SeverityLevel.CRITICAL,
                 alert_count=3,
-                first_seen_at=now - timedelta(minutes=14),
-                last_seen_at=now - timedelta(minutes=2),
+                first_seen_at=now - timedelta(minutes=25),
+                last_seen_at=now - timedelta(minutes=4),
                 is_simulated=False,
             )
-        if not Incident.objects.filter(service_name="auth-service").exists():
             Incident.objects.create(
-                service_name="auth-service",
-                fingerprint="jwt-validation-failure",
+                service_name="aws-production-api",
+                fingerprint="ecs-task-oom-killed",
                 status=Incident.IncidentStatus.RESOLVED,
                 severity=Incident.SeverityLevel.HIGH,
-                alert_count=5,
-                first_seen_at=now - timedelta(hours=2),
-                last_seen_at=now - timedelta(hours=1, minutes=30),
-                acknowledged_at=now - timedelta(hours=1, minutes=45),
-                resolved_at=now - timedelta(hours=1, minutes=20),
-                resolution_notes="Rotated secondary RS256 key pair on auth pods.",
+                alert_count=2,
+                first_seen_at=now - timedelta(hours=3),
+                last_seen_at=now - timedelta(hours=2, minutes=10),
+                acknowledged_at=now - timedelta(hours=2, minutes=45),
+                resolved_at=now - timedelta(hours=2, minutes=10),
+                resolution_notes="Scaled ECS Fargate task memory ceiling from 2GB to 4GB.",
+                is_simulated=False,
+            )
+        if not Incident.objects.filter(service_name="payment-api").exists():
+            Incident.objects.create(
+                service_name="payment-api",
+                fingerprint="payment-gateway-pool-saturation",
+                status=Incident.IncidentStatus.OPEN,
+                severity=Incident.SeverityLevel.CRITICAL,
+                alert_count=4,
+                first_seen_at=now - timedelta(minutes=18),
+                last_seen_at=now - timedelta(minutes=3),
                 is_simulated=False,
             )
 
         return Response({
             "status": "success",
-            "message": "Workspace reset to clean slate successfully.",
-            "deleted_simulated_incidents": deleted_sim_incidents,
-            "deleted_test_incidents": deleted_test_incidents,
+            "message": "Simulator incidents cleared. AWS & production incidents preserved.",
+            "deleted_simulated_incidents": deleted_sim_incidents + deleted_sim_named,
             "current_total_incidents": Incident.objects.count(),
         }, status=status.HTTP_200_OK)

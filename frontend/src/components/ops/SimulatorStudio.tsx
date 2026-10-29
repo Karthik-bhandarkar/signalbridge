@@ -207,10 +207,10 @@ export default function SimulatorStudio({
             onClick={handleReset}
             disabled={resetting}
             className="flex items-center gap-1.5 text-[10px] font-semibold text-[#8B949E] hover:text-[#F85149] transition-colors cursor-pointer"
-            title="Purge test incidents and reset to clean baseline"
+            title="Clear simulated alerts only — keeps AWS & production incidents"
           >
             <RotateCcw size={11} className={resetting ? "animate-spin" : ""} />
-            <span>{resetting ? "Resetting..." : "Reset Incidents (Clean Slate)"}</span>
+            <span>{resetting ? "Clearing..." : "Clear Simulator Alerts"}</span>
           </button>
         </div>
       </div>

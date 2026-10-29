@@ -150,10 +150,10 @@ export default function IncidentsClientPage() {
           onClick={handleResetDemoData}
           disabled={isResetting}
           className="flex items-center gap-1.5 rounded-lg border border-[#F85149]/40 bg-[#F85149]/15 px-3 py-1.5 text-xs font-semibold text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/70 transition-all cursor-pointer self-start sm:self-auto"
-          title="Purge test incidents and reset to clean baseline"
+          title="Purge simulated incidents only — preserves AWS & production feed"
         >
           <RotateCcw size={13} className={isResetting ? "animate-spin" : ""} />
-          <span>{isResetting ? "Resetting..." : "Reset Incidents (Clean Slate)"}</span>
+          <span>{isResetting ? "Clearing..." : "Clear Simulator Incidents"}</span>
         </button>
       </div>
 
