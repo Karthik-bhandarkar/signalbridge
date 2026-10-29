@@ -209,3 +209,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     success = run_smoke_tests(args.url)
     sys.exit(0 if success else 1)
+

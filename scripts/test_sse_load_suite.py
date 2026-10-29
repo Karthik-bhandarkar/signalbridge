@@ -134,3 +134,4 @@ if __name__ == "__main__":
     time.sleep(2)
     res40 = run_sse_benchmark(40)
     print("ALL LOAD TESTS COMPLETED SUCCESSFULLY.")
+

@@ -19,3 +19,4 @@ for pat in patterns:
     lines = [l.strip() for l in res.stdout.split('\n') if l.strip()]
     commits = [l.split()[0] for l in lines]
     print(f"Pattern '{pat}': {len(commits)} commits -> {commits}")
+
