@@ -29,28 +29,7 @@ export default function LoginForm() {
     setError(null);
 
     try {
-      // 1. Authenticate with Django backend to establish sessionid cookie
-      let csrfToken = "";
-      try {
-        const csrfRes = await fetch("/api/v1/auth/csrf/");
-        if (csrfRes.ok) {
-          const csrfData = await csrfRes.json();
-          csrfToken = csrfData.csrfToken || "";
-        }
-      } catch {
-        // continue
-      }
-
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-
-      const backendRes = await fetch("/api/v1/auth/login/", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ username: uName, password: pWord }),
-      });
-
-      // 2. Also submit Next.js form data to start Next.js session
+      // 1. Establish Next.js session first
       const formData = new FormData();
       formData.append("username", uName);
       formData.append("password", pWord);
@@ -58,14 +37,35 @@ export default function LoginForm() {
       const actionRes = await fetch("/api/auth/session-login", {
         method: "POST",
         body: formData,
-      }).catch(() => null);
+      });
 
-      if (!backendRes.ok && (!actionRes || !actionRes.ok)) {
-        throw new Error("Invalid username or password.");
+      if (!actionRes.ok) {
+        const data = await actionRes.json().catch(() => ({}));
+        throw new Error(data.error || "Invalid username or password.");
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      // 2. Best-effort Django session sync (if available)
+      try {
+        let csrfToken = "";
+        const csrfRes = await fetch("/api/v1/auth/csrf/");
+        if (csrfRes.ok) {
+          const csrfData = await csrfRes.json();
+          csrfToken = csrfData.csrfToken || "";
+        }
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (csrfToken) headers["X-CSRFToken"] = csrfToken;
+
+        await fetch("/api/v1/auth/login/", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ username: uName, password: pWord }),
+        });
+      } catch {
+        // Ignore backend sync failure in standalone/mock modes
+      }
+
+      // 3. Navigate directly to dashboard
+      window.location.href = "/dashboard";
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid username or password.";
       setError(msg);

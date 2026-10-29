@@ -38,3 +38,4 @@ def reset_demo_data_nightly():
         "deleted_alerts": deleted_alerts,
         "deleted_payloads": deleted_payloads,
     }
+

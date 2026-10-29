@@ -16,7 +16,7 @@
 | **Gate 4** | AWS Storage & Database (S3, RDS) | 🟢 **COMPLETED** | 2026-10-26 18:15 UTC | RDS Available & S3 Ready |
 | **Gate 5** | Compute Deployment (EC2, Docker Compose, Nginx) | 🟢 **COMPLETED** | 2026-10-26 18:31 UTC | All 4 Containers Up & Migrations OK |
 | **Gate 6** | Routing & Ingestion Test (ALB, CloudFront, Incident Scenario) | 🟢 **COMPLETED** | 2026-10-26 18:54 UTC | Live Scenario Script Verified (7/7 Steps) |
-| **Gate 7** | Evidence Package & Verification | 🟡 **IN PROGRESS** | - | Screenshot Capture & S3 Audit |
+| **Gate 7** | Evidence Package & Verification | 🟢 **COMPLETED** | 2026-10-29 04:55 UTC | Automated Live Suite (`aws-evidence/`) |
 | **Gate 8** | Complete Teardown & Post-Cleanup Verification | ⚪ NOT STARTED | - | - |
 
 ---
@@ -71,4 +71,6 @@
 - [x] **AWS S3 Archival**: Real object verified in S3: `archives/pagerduty/2026/10/26/e12cf5db-2091-43d6-9288-beef2dbae53f.json`.
 - [x] **AWS Incident Grouping**: Correlated incident (`62cc5175-427e-4848-80ba-50bf05d656c0`) with 2 alerts, CRITICAL severity.
 - [x] **AWS Operator Resolution**: Incident transitioned from OPEN -> ACKNOWLEDGED -> RESOLVED with root cause audit note.
-- [ ] **Comparison Report**: `local-evidence/reports/LOCAL_VS_AWS_COMPARISON_REPORT.md`.
+- [x] **Comparison Report**: Saved in [`aws-evidence/reports/LOCAL_VS_AWS_COMPARISON_REPORT.md`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/aws-evidence/reports/LOCAL_VS_AWS_COMPARISON_REPORT.md).
+- [x] **AWS Evidence Report**: Saved in [`aws-evidence/reports/AWS_DEPLOYMENT_EVIDENCE_REPORT.md`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/aws-evidence/reports/AWS_DEPLOYMENT_EVIDENCE_REPORT.md).
+- [x] **AWS Resource Inventory**: Saved in [`aws-evidence/inventory/aws_resource_inventory.json`](file:///c:/MindForge/Project/01_SignalBridge_Webhook_Ingestion/aws-evidence/inventory/aws_resource_inventory.json).

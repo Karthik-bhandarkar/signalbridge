@@ -8,6 +8,7 @@
 /snapshot/
 /scratch/
 local-evidence/
+aws-evidence/
 AGENTS.md
 SIGNALBRIDGE_ANTIGRAVITY_MASTER_IMPLEMENTATION_PROMPT.md
 prompt.md

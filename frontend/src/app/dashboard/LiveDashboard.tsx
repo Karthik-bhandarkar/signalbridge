@@ -123,7 +123,14 @@ export default function LiveDashboard({
   useEffect(() => {
     refreshAll();
     const interval = setInterval(refreshAll, 3500);
-    return () => clearInterval(interval);
+    const openCount = includeSimulated
+    ? kpis.open_incidents
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
+  const criticalCount = includeSimulated
+    ? kpis.critical_open
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
+
+  return () => clearInterval(interval);
   }, [refreshAll]);
 
   // SSE Stream listener with auto-fallback
@@ -159,10 +166,24 @@ export default function LiveDashboard({
     } catch {
       // EventSource unavailable or errored synchronously
       const timer = setTimeout(() => setStreamStatus("polling"), 0);
-      return () => clearTimeout(timer);
+      const openCount = includeSimulated
+    ? kpis.open_incidents
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
+  const criticalCount = includeSimulated
+    ? kpis.critical_open
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
+
+  return () => clearTimeout(timer);
     }
 
-    return () => {
+    const openCount = includeSimulated
+    ? kpis.open_incidents
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
+  const criticalCount = includeSimulated
+    ? kpis.critical_open
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
+
+  return () => {
       if (evtSource) evtSource.close();
     };
   }, [fetchIncidents, fetchOverview]);
@@ -279,7 +300,14 @@ export default function LiveDashboard({
     if (!includeSimulated && inc.is_simulated) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    return (
+    const openCount = includeSimulated
+    ? kpis.open_incidents
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
+  const criticalCount = includeSimulated
+    ? kpis.critical_open
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
+
+  return (
       inc.service_name.toLowerCase().includes(q) ||
       inc.fingerprint.toLowerCase().includes(q) ||
       inc.severity.toLowerCase().includes(q)
@@ -522,7 +550,14 @@ export default function LiveDashboard({
                 ) : (
                   filtered.map((inc) => {
                     const sev = sevColors[inc.severity] || sevColors.MEDIUM;
-                    return (
+                    const openCount = includeSimulated
+    ? kpis.open_incidents
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated).length;
+  const criticalCount = includeSimulated
+    ? kpis.critical_open
+    : incidents.filter((i) => i.status === "OPEN" && !i.is_simulated && i.severity === "CRITICAL").length;
+
+  return (
                       <tr
                         key={inc.id}
                         onClick={() => openIncidentDetail(inc)}

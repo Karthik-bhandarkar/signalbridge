@@ -85,3 +85,4 @@ class Command(BaseCommand):
                 f"Successfully seeded demo users. Created: {created_count}, Updated: {updated_count}."
             )
         )
+

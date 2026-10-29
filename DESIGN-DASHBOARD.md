@@ -62,3 +62,4 @@
 - Real-time updates via SSE or polling fallback. Beacon shows LIVE / RECONNECTING / OFFLINE.
 - Responsive: sidebar becomes a bottom/hamburger nav under 768px, tables become cards.
 - Accessibility: AA contrast, aria-live for new incidents, keyboard navigable, visible focus ring, reduced-motion respected.
+
