@@ -34,9 +34,16 @@
 
 Watch the complete **3-minute end-to-end production demonstration** covering webhook ingestion, live HMAC signature verification, in-memory deduplication, incident triage, and cloud infrastructure telemetry:
 
-https://github.com/user-attachments/assets/signalbridge-demo-walkthrough
-
-> 🔊 **Prefer audio?** You can also download or view the [full narrated walkthrough with voiceover](docs/assets/demo/signalbridge-demo-walkthrough.mp4). The complete recording script is documented in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+<div align="center">
+  <video src="docs/assets/demo/signalbridge-demo-walkthrough.mp4" controls muted playsinline width="100%" poster="docs/assets/screenshots/03-mission-control-dashboard.png">
+    <a href="docs/assets/demo/signalbridge-demo-walkthrough.mp4">
+      <img src="docs/assets/screenshots/03-mission-control-dashboard.png" alt="SignalBridge Video Demo Poster" width="100%" />
+    </a>
+  </video>
+  <p align="center">
+    <i>🔊 <b>Audio Controls:</b> The video starts <b>muted by default</b>. Click the volume/unmute icon in the player controls to enable narration. Full transcript and script available in <a href="docs/DEMO_SCRIPT.md"><code>docs/DEMO_SCRIPT.md</code></a>.</i>
+  </p>
+</div>
 
 ---
 
