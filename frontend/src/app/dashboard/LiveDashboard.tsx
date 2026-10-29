@@ -9,6 +9,8 @@ import {
   RefreshCw,
   Search,
   Shield,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 
 import LiveTelemetryBeacon from "@/components/ops/LiveTelemetryBeacon";
@@ -74,6 +76,33 @@ export default function LiveDashboard() {
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailData | null>(null);
   const [localModalOpen, setLocalModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isResetting, setIsResetting] = useState(false);
+
+  async function handleResetDemoData() {
+    setIsResetting(true);
+    try {
+      await apiClient.simulator.reset("all");
+      refreshAll();
+    } catch (err) {
+      console.error("Failed to reset demo data", err);
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  async function handleDeleteIncident(id: string) {
+    setIncidents((prev) => prev.filter((i) => i.id !== id));
+    if (selectedIncident?.id === id) {
+      setSelectedIncident(null);
+    }
+    try {
+      await apiClient.incidents.delete(id);
+      refreshAll();
+    } catch (err) {
+      console.error("Failed to delete incident", err);
+      refreshAll();
+    }
+  }
 
   // 1. Fetch live KPIs
   const fetchOverview = useCallback(async () => {
@@ -210,7 +239,7 @@ export default function LiveDashboard() {
 
   return (
     <div className="space-y-6" style={{ color: "#E6EAF2" }}>
-      {/* Top Bar Header with Telemetry Beacon */}
+      {/* Dashboard Sub-Header with Telemetry Beacon & Reset Incidents Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232C3D] pb-5">
         <div>
           <div className="flex items-center gap-3">
@@ -222,30 +251,16 @@ export default function LiveDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {!user ? (
-            <button
-              onClick={openLoginModal}
-              className="flex items-center gap-1.5 rounded-lg border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-3 py-1.5 text-xs font-semibold text-[#58A6FF] hover:bg-[#4F8CFF]/25 transition-colors"
-            >
-              <Shield size={13} />
-              <span>Sign In as Operator</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-[#232C3D] bg-[#111722] px-3 py-1 text-xs font-mono">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#3FB950]" />
-              <span className="text-[#8B949E]">Operator:</span>
-              <span className="font-semibold text-[#E6EAF2]">{user.username}</span>
-            </div>
-          )}
-
+        <div className="flex items-center gap-3">
           <button
-            onClick={refreshAll}
-            disabled={isPending}
-            className="flex items-center gap-1 rounded-lg border border-[#232C3D] bg-[#111722] p-1.5 text-xs text-[#8B949E] hover:text-[#E6EAF2] hover:bg-[#161D2B] transition-colors"
-            title="Refresh stream data"
+            type="button"
+            onClick={handleResetDemoData}
+            disabled={isResetting}
+            className="flex items-center gap-1.5 rounded-lg border border-[#F85149]/40 bg-[#F85149]/15 px-3 py-1.5 text-xs font-semibold text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/70 transition-all cursor-pointer"
+            title="Purge test incidents and reset to clean baseline"
           >
-            <RefreshCw size={14} className={isPending ? "animate-spin" : ""} />
+            <RotateCcw size={13} className={isResetting ? "animate-spin" : ""} />
+            <span>{isResetting ? "Resetting..." : "Reset Incidents (Clean Slate)"}</span>
           </button>
         </div>
       </div>
@@ -494,6 +509,7 @@ export default function LiveDashboard() {
                           <div className="flex items-center justify-end gap-1.5">
                             {inc.status === "OPEN" && (
                               <button
+                                type="button"
                                 onClick={() => handleAcknowledge(inc.id)}
                                 className="rounded border border-[#D29922]/40 bg-[#D29922]/15 px-2 py-1 text-[10px] font-semibold text-[#D29922] hover:bg-[#D29922]/25 transition-colors"
                               >
@@ -502,12 +518,21 @@ export default function LiveDashboard() {
                             )}
                             {inc.status !== "RESOLVED" && (
                               <button
+                                type="button"
                                 onClick={() => handleResolve(inc.id, "Quick resolved by operator")}
                                 className="rounded border border-[#3FB950]/40 bg-[#3FB950]/15 px-2 py-1 text-[10px] font-semibold text-[#3FB950] hover:bg-[#3FB950]/25 transition-colors"
                               >
                                 Resolve
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteIncident(inc.id)}
+                              title="Delete incident"
+                              className="rounded border border-[#F85149]/30 bg-[#F85149]/10 p-1 text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/60 transition-colors"
+                            >
+                              <Trash2 size={11} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -535,6 +560,7 @@ export default function LiveDashboard() {
         onClose={() => setSelectedIncident(null)}
         onAcknowledge={handleAcknowledge}
         onResolve={handleResolve}
+        onDelete={handleDeleteIncident}
         isOperator={isOperator}
         onRequestAuth={openLoginModal}
       />

@@ -289,3 +289,12 @@ class PublicIncidentDetailAPIView(APIView):
             "alerts": alerts_data,
             "events": events_data,
         }, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        try:
+            inc = Incident.objects.get(pk=pk)
+            inc.alerts.all().delete()
+            inc.delete()
+            return Response({"status": "deleted", "id": str(pk)}, status=status.HTTP_200_OK)
+        except (Incident.DoesNotExist, ValueError):
+            return Response({"error": "Incident not found."}, status=status.HTTP_404_NOT_FOUND)

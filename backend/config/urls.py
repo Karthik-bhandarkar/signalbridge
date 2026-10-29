@@ -59,7 +59,7 @@ from apps.core.health_views import HealthLiveAPIView, HealthReadyAPIView, System
 from apps.core.version_views import VersionAPIView
 from apps.alerts.public_views import PublicOverviewAPIView, PublicIncidentListAPIView, PublicIncidentDetailAPIView
 from apps.alerts.stream_views import LiveEventStreamAPIView
-from apps.webhooks.simulator_views import SimulatorDispatchAPIView
+from apps.webhooks.simulator_views import SimulatorDispatchAPIView, SimulatorResetAPIView
 from apps.core.auth_views import (
     AuthLoginAPIView,
     AuthLogoutAPIView,
@@ -134,6 +134,8 @@ urlpatterns = [
 
     # Live Event Simulator & Ingestion Studio
     path("api/v1/simulator/dispatch/", SimulatorDispatchAPIView.as_view(), name="simulator-dispatch"),
+    path("api/v1/simulator/reset/", SimulatorResetAPIView.as_view(), name="simulator-reset"),
+    path("api/v1/demo/reset/", SimulatorResetAPIView.as_view(), name="demo-reset"),
 
     # Analytics & Operational Performance Metrics
     path("api/v1/analytics/", include("apps.analytics.urls", namespace="analytics")),

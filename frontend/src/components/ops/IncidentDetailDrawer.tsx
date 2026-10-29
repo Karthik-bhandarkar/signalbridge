@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, CheckCircle2, Clock, AlertTriangle, ShieldAlert, Layers, Archive, History, FileText, Send } from "lucide-react";
+import { X, CheckCircle2, Clock, AlertTriangle, ShieldAlert, Layers, Archive, History, FileText, Send, Trash2 } from "lucide-react";
 
 export interface IncidentDetailData {
   id: string;
@@ -41,6 +41,7 @@ interface IncidentDetailDrawerProps {
   onResolve: (id: string, notes: string) => Promise<void>;
   isOperator: boolean;
   onRequestAuth: () => void;
+  onDelete?: (id: string) => Promise<void> | void;
 }
 
 export default function IncidentDetailDrawer({
@@ -50,6 +51,7 @@ export default function IncidentDetailDrawer({
   onResolve,
   isOperator,
   onRequestAuth,
+  onDelete,
 }: IncidentDetailDrawerProps) {
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [actionLoading, setActionLoading] = useState(false);

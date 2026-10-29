@@ -253,6 +253,9 @@ export const apiClient = {
         resolution_notes: resolutionNotes || "Resolved via Operator Console.",
       });
     },
+    delete: async (id: string) => {
+      return apiClient.delete(`/api/v1/public/incidents/${id}/`);
+    },
   },
 
   telemetry: {
@@ -273,6 +276,9 @@ export const apiClient = {
   simulator: {
     dispatch: async (scenario = "payment_gateway_saturation") => {
       return apiClient.post("/api/v1/simulator/dispatch/", { scenario });
+    },
+    reset: async (scope = "all") => {
+      return apiClient.post("/api/v1/simulator/reset/", { scope });
     },
   },
 };

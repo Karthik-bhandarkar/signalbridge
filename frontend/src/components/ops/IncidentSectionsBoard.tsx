@@ -17,6 +17,7 @@ import {
   Search,
   Sparkles,
   Zap,
+  Trash2,
 } from "lucide-react";
 
 import { IncidentDetailData } from "./IncidentDetailDrawer";
@@ -30,6 +31,7 @@ interface IncidentSectionsBoardProps {
   onRequestAuth: () => void;
   showSimulated: boolean;
   setShowSimulated: (val: boolean) => void;
+  onDelete?: (id: string) => Promise<void> | void;
 }
 
 export default function IncidentSectionsBoard({
@@ -41,6 +43,7 @@ export default function IncidentSectionsBoard({
   onRequestAuth,
   showSimulated,
   setShowSimulated,
+  onDelete,
 }: IncidentSectionsBoardProps) {
   const [viewMode, setViewMode] = useState<"board" | "table">("board");
   const [search, setSearch] = useState("");
@@ -330,14 +333,30 @@ export default function IncidentSectionsBoard({
                           </span>
                         </div>
 
-                        <button
-                          onClick={(e) => handleAck(e, inc.id)}
-                          disabled={actionLoadingId === inc.id}
-                          className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#D29922]/40 bg-[#D29922]/15 py-1.5 text-xs font-semibold text-[#D29922] hover:bg-[#D29922]/25 transition-all shadow-sm"
-                        >
-                          <span>Acknowledge</span>
-                          <ArrowRight size={12} />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => handleAck(e, inc.id)}
+                            disabled={actionLoadingId === inc.id}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-[#D29922]/40 bg-[#D29922]/15 py-1.5 text-xs font-semibold text-[#D29922] hover:bg-[#D29922]/25 transition-all shadow-sm"
+                          >
+                            <span>Acknowledge</span>
+                            <ArrowRight size={12} />
+                          </button>
+                          {onDelete && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(inc.id);
+                              }}
+                              title="Delete incident"
+                              className="rounded-lg border border-[#F85149]/30 bg-[#F85149]/10 p-1.5 text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/60 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -407,14 +426,30 @@ export default function IncidentSectionsBoard({
                           </span>
                         </div>
 
-                        <button
-                          onClick={(e) => handleRes(e, inc.id)}
-                          disabled={actionLoadingId === inc.id}
-                          className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#3FB950]/40 bg-[#3FB950]/15 py-1.5 text-xs font-semibold text-[#3FB950] hover:bg-[#3FB950]/25 transition-all shadow-sm"
-                        >
-                          <CheckCircle2 size={13} />
-                          <span>Resolve Incident</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => handleRes(e, inc.id)}
+                            disabled={actionLoadingId === inc.id}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-[#3FB950]/40 bg-[#3FB950]/15 py-1.5 text-xs font-semibold text-[#3FB950] hover:bg-[#3FB950]/25 transition-all shadow-sm"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Resolve Incident</span>
+                          </button>
+                          {onDelete && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(inc.id);
+                              }}
+                              title="Delete incident"
+                              className="rounded-lg border border-[#F85149]/30 bg-[#F85149]/10 p-1.5 text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/60 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -599,10 +634,24 @@ export default function IncidentSectionsBoard({
                         )}
                         {inc.status !== "RESOLVED" && (
                           <button
+                            type="button"
                             onClick={(e) => handleRes(e, inc.id)}
                             className="rounded border border-[#3FB950]/40 bg-[#3FB950]/15 px-2 py-1 text-[10px] font-semibold text-[#3FB950] hover:bg-[#3FB950]/25 transition-colors"
                           >
                             Resolve
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(inc.id);
+                            }}
+                            title="Delete incident"
+                            className="rounded border border-[#F85149]/30 bg-[#F85149]/10 p-1 text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/60 transition-colors"
+                          >
+                            <Trash2 size={11} />
                           </button>
                         )}
                       </div>

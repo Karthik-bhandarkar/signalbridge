@@ -146,6 +146,16 @@ class IncidentDetailAPIView(APIView):
         serializer = IncidentDetailSerializer(incident)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def delete(self, request, pk):
+        try:
+            incident = Incident.objects.get(pk=pk)
+            incident.alerts.all().delete()
+            incident.delete()
+            return Response({"status": "deleted", "id": str(pk)}, status=status.HTTP_200_OK)
+        except Incident.DoesNotExist:
+            return Response({"error": "Incident not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
 
 class IncidentAcknowledgeAPIView(APIView):
     """

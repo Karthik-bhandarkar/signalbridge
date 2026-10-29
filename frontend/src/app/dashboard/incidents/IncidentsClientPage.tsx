@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { RotateCcw } from "lucide-react";
 import IncidentSectionsBoard from "@/components/ops/IncidentSectionsBoard";
 import IncidentDetailDrawer, { IncidentDetailData } from "@/components/ops/IncidentDetailDrawer";
 import OperatorLoginModal from "@/components/ops/OperatorLoginModal";
@@ -14,6 +15,33 @@ export default function IncidentsClientPage() {
   const [selectedIncident, setSelectedIncident] = useState<IncidentDetailData | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [showSimulated, setShowSimulated] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
+
+  async function handleResetDemoData() {
+    setIsResetting(true);
+    try {
+      await apiClient.simulator.reset("all");
+      fetchIncidents();
+    } catch (err) {
+      console.error("Failed to reset demo data", err);
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
+  async function handleDeleteIncident(id: string) {
+    setIncidents((prev) => prev.filter((i) => i.id !== id));
+    if (selectedIncident?.id === id) {
+      setSelectedIncident(null);
+    }
+    try {
+      await apiClient.incidents.delete(id);
+      fetchIncidents();
+    } catch (err) {
+      console.error("Failed to delete incident", err);
+      fetchIncidents();
+    }
+  }
 
   const fetchIncidents = useCallback(async () => {
     try {
@@ -110,11 +138,23 @@ export default function IncidentsClientPage() {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-[#232C3D] pb-4">
-        <h1 className="text-xl font-bold text-[#E6EAF2]">Incident Operations Board</h1>
-        <p className="text-xs text-[#8B949E] mt-0.5">
-          Real-time incident lifecycle management across Present, In-Progress, and Resolved states.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232C3D] pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-[#E6EAF2]">Incident Operations Board</h1>
+          <p className="text-xs text-[#8B949E] mt-0.5">
+            Real-time incident lifecycle management across Present, In-Progress, and Resolved states.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleResetDemoData}
+          disabled={isResetting}
+          className="flex items-center gap-1.5 rounded-lg border border-[#F85149]/40 bg-[#F85149]/15 px-3 py-1.5 text-xs font-semibold text-[#F85149] hover:bg-[#F85149]/25 hover:border-[#F85149]/70 transition-all cursor-pointer self-start sm:self-auto"
+          title="Purge test incidents and reset to clean baseline"
+        >
+          <RotateCcw size={13} className={isResetting ? "animate-spin" : ""} />
+          <span>{isResetting ? "Resetting..." : "Reset Incidents (Clean Slate)"}</span>
+        </button>
       </div>
 
       <IncidentSectionsBoard
@@ -126,6 +166,7 @@ export default function IncidentsClientPage() {
         onRequestAuth={openLoginModal}
         showSimulated={showSimulated}
         setShowSimulated={setShowSimulated}
+        onDelete={handleDeleteIncident}
       />
 
       <IncidentDetailDrawer
@@ -133,6 +174,7 @@ export default function IncidentsClientPage() {
         onClose={() => setSelectedIncident(null)}
         onAcknowledge={handleAcknowledge}
         onResolve={handleResolve}
+        onDelete={handleDeleteIncident}
         isOperator={isOperator}
         onRequestAuth={openLoginModal}
       />

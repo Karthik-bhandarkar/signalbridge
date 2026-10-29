@@ -28,7 +28,27 @@
 .ops-nav-link.active { color: var(--text-primary); background: var(--surface-selected); border-color: var(--border-default); }
 .ops-nav-link.active::before { background: var(--brand-violet); }
 .ops-nav-count { background: var(--surface-inset); border-color: var(--border-default); color: var(--status-danger); }
-.ops-sidebar-status > span { color: var(--status-success); }
+.ops-sidebar-status > span, .ops-sidebar-footer span { color: var(--status-success); }
+.ops-sidebar-footer {
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-inset);
+  flex-shrink: 0;
+}
+.ops-sidebar-footer span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 500;
+}
+.ops-sidebar-footer p {
+  margin: 5px 0 0;
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
 .ops-avatar { background: var(--surface-elevated); border-color: var(--border-default); color: var(--text-primary); }
 .ops-signout { color: var(--text-muted); }
 .ops-signout:hover { color: var(--text-primary); background: var(--surface-hover); }
