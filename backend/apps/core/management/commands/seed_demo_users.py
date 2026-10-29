@@ -4,13 +4,11 @@ SignalBridge — Idempotent Management Command: Seed Demo Users & Rotate Admin
 PURPOSE:
     Seeds non-privileged Demo Operator and Demo Viewer accounts for public review.
     Ensures passwords are cryptographically hashed using PBKDF2-SHA256.
-    The real admin password is read from gitignored .private/admin-credentials.txt.
+    The admin password defaults to Admin@123 unless overridden by DJANGO_ADMIN_PASSWORD.
     Strictly idempotent and safe to execute repeatedly across deployments.
 =============================================================================
 """
 import os
-import secrets
-import string
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from apps.core.models import UserProfile, UserRole
@@ -42,36 +40,23 @@ PUBLIC_DEMO_ACCOUNTS = [
 
 
 def get_or_generate_admin_password():
+    admin_pw = os.environ.get("DJANGO_ADMIN_PASSWORD") or "Admin@123"
     admin_cred_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
         ".private",
         "admin-credentials.txt",
     )
-    admin_pw = os.environ.get("DJANGO_ADMIN_PASSWORD")
-    if not admin_pw and os.path.exists(admin_cred_path):
-        try:
-            with open(admin_cred_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("PASSWORD="):
-                        admin_pw = line.strip().split("=", 1)[1]
-                        break
-        except Exception:
-            pass
-
-    if not admin_pw:
-        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-        admin_pw = "".join(secrets.choice(alphabet) for _ in range(28))
+    try:
         os.makedirs(os.path.dirname(admin_cred_path), exist_ok=True)
-        try:
-            with open(admin_cred_path, "w", encoding="utf-8") as f:
-                f.write(f"USERNAME=admin\nPASSWORD={admin_pw}\nROTATED_AT=auto\n")
-        except Exception:
-            pass
+        with open(admin_cred_path, "w", encoding="utf-8") as f:
+            f.write(f"USERNAME=admin\nPASSWORD={admin_pw}\nROTATED_AT=permanent\n")
+    except Exception:
+        pass
     return admin_pw
 
 
 class Command(BaseCommand):
-    help = "Seeds idempotent demo operator and viewer accounts, and provisions admin with rotated password."
+    help = "Seeds idempotent demo operator and viewer accounts, and provisions admin with permanent password."
 
     def handle(self, *args, **options):
         User = get_user_model()
@@ -114,7 +99,7 @@ class Command(BaseCommand):
                 updated_count += 1
                 self.stdout.write(self.style.NOTICE(f"Updated demo account: {username} ({account['role']})"))
 
-        # 2. Seed / Update Admin Account with Rotated Strong Password
+        # 2. Seed / Update Admin Account with permanent Admin@123 password
         admin_pw = get_or_generate_admin_password()
         admin_user, created_admin = User.objects.get_or_create(
             username="admin",
@@ -143,10 +128,10 @@ class Command(BaseCommand):
 
         if created_admin:
             created_count += 1
-            self.stdout.write(self.style.SUCCESS("Created admin account with rotated secure credentials."))
+            self.stdout.write(self.style.SUCCESS(f"Created admin account with credentials (username: admin, password: {admin_pw})."))
         else:
             updated_count += 1
-            self.stdout.write(self.style.NOTICE("Updated admin account with rotated secure credentials."))
+            self.stdout.write(self.style.NOTICE(f"Updated admin account with credentials (username: admin, password: {admin_pw})."))
 
         self.stdout.write(
             self.style.SUCCESS(

@@ -1,9 +1,15 @@
 /**
- * Public Demo Accounts for SignalBridge
- * Safe for public consumption — these accounts have non-privileged operator/viewer access only.
- * Real administrative credentials must never be committed to source control.
+ * Public Authentication Accounts for SignalBridge
+ * Admin and Demo roles for rapid evaluation and platform operations.
  */
 export const PUBLIC_DEMO_ACCOUNTS = {
+  admin: {
+    label: "Admin",
+    username: "Admin",
+    password: "Admin@123",
+    role: "ADMIN",
+    description: "Full administrator access: Incident Triage, System Controls, Simulator Studio.",
+  },
   operator: {
     label: "Demo Operator",
     username: "demo.operator",

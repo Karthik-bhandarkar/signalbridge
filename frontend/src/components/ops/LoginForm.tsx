@@ -12,8 +12,8 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("Admin");
+  const [password, setPassword] = useState("Admin@123");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 setUsername(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="e.g. demo.operator"
+              placeholder="Admin"
               autoComplete="username"
               required
               className="w-full rounded-xl border border-[#232C3D] bg-[#161D2B] pl-9 pr-3.5 py-2.5 text-sm text-[#E6EAF2] placeholder-[#8B949E]/50 focus:border-[#4F8CFF] focus:outline-none focus:ring-1 focus:ring-[#4F8CFF] transition-all"
@@ -122,7 +122,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
                 setPassword(e.target.value);
                 if (error) setError(null);
               }}
-              placeholder="••••••••••••"
+              placeholder="Admin@123"
               autoComplete="current-password"
               required
               className="w-full rounded-xl border border-[#232C3D] bg-[#161D2B] pl-9 pr-10 py-2.5 text-sm text-[#E6EAF2] placeholder-[#8B949E]/50 focus:border-[#4F8CFF] focus:outline-none focus:ring-1 focus:ring-[#4F8CFF] transition-all font-mono"
@@ -162,47 +162,47 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       <div className="rounded-2xl border border-[#232C3D] bg-[#161D2B]/70 p-4 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#E6EAF2]">
           <Sparkles size={14} className="text-[#F0B232]" />
-          <span>Public Demo Access (Instant One-Click Sign In)</span>
+          <span>Quick Authentication (Instant One-Click Sign In)</span>
         </div>
         <p className="text-[11px] text-[#8B949E] leading-relaxed">
-          Select an authorized demo role below for evaluation. Credentials are pre-configured with active session permissions.
+          Select an authorized role below for instant evaluation. Credentials are pre-configured with active session permissions.
         </p>
 
         <div className="space-y-2.5 pt-1">
-          {/* Demo Operator */}
-          <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
+          {/* Admin Account */}
+          <div className="rounded-xl border border-[#4F8CFF]/40 bg-[#111722] p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#4F8CFF]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#4F8CFF]" />
-                {PUBLIC_DEMO_ACCOUNTS.operator.label}
+                {PUBLIC_DEMO_ACCOUNTS.admin.label}
               </span>
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#4F8CFF]/10 text-[#4F8CFF] border border-[#4F8CFF]/20">
-                Full Triage Privileges
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#4F8CFF]/15 text-[#4F8CFF] border border-[#4F8CFF]/30">
+                Full Admin Privileges
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
               <div className="flex items-center justify-between bg-[#161D2B] px-2.5 py-1.5 rounded-lg border border-[#232C3D]">
-                <span className="text-[#8B949E] truncate mr-1">{PUBLIC_DEMO_ACCOUNTS.operator.username}</span>
+                <span className="text-[#E6EAF2] truncate mr-1 font-semibold">{PUBLIC_DEMO_ACCOUNTS.admin.username}</span>
                 <button
                   type="button"
-                  onClick={() => handleCopy(PUBLIC_DEMO_ACCOUNTS.operator.username, "op_user")}
+                  onClick={() => handleCopy(PUBLIC_DEMO_ACCOUNTS.admin.username, "admin_user")}
                   className="text-[#8B949E] hover:text-[#E6EAF2] transition-colors shrink-0"
                   title="Copy username"
                 >
-                  {copiedKey === "op_user" ? <Check size={12} className="text-[#3FB950]" /> : <Copy size={12} />}
+                  {copiedKey === "admin_user" ? <Check size={12} className="text-[#3FB950]" /> : <Copy size={12} />}
                 </button>
               </div>
 
               <div className="flex items-center justify-between bg-[#161D2B] px-2.5 py-1.5 rounded-lg border border-[#232C3D]">
-                <span className="text-[#8B949E] truncate mr-1">••••••••••••</span>
+                <span className="text-[#E6EAF2] truncate mr-1 font-semibold">{PUBLIC_DEMO_ACCOUNTS.admin.password}</span>
                 <button
                   type="button"
-                  onClick={() => handleCopy(PUBLIC_DEMO_ACCOUNTS.operator.password, "op_pw")}
+                  onClick={() => handleCopy(PUBLIC_DEMO_ACCOUNTS.admin.password, "admin_pw")}
                   className="text-[#8B949E] hover:text-[#E6EAF2] transition-colors shrink-0"
                   title="Copy passkey"
                 >
-                  {copiedKey === "op_pw" ? <Check size={12} className="text-[#3FB950]" /> : <Copy size={12} />}
+                  {copiedKey === "admin_pw" ? <Check size={12} className="text-[#3FB950]" /> : <Copy size={12} />}
                 </button>
               </div>
             </div>
@@ -210,8 +210,31 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
             <button
               type="button"
               disabled={loading}
+              onClick={() => handleQuickFillAndSignIn(PUBLIC_DEMO_ACCOUNTS.admin)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#4F8CFF] py-2 text-xs font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all cursor-pointer shadow-md shadow-[#4F8CFF]/25"
+            >
+              <span>1-Click Sign In as Admin (Admin / Admin@123)</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+
+          {/* Demo Operator */}
+          <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#8B949E]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8B949E]" />
+                {PUBLIC_DEMO_ACCOUNTS.operator.label}
+              </span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#8B949E]/10 text-[#8B949E] border border-[#8B949E]/20">
+                Triage Operator
+              </span>
+            </div>
+
+            <button
+              type="button"
+              disabled={loading}
               onClick={() => handleQuickFillAndSignIn(PUBLIC_DEMO_ACCOUNTS.operator)}
-              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#4F8CFF]/15 border border-[#4F8CFF]/40 py-1.5 text-xs font-medium text-[#4F8CFF] hover:bg-[#4F8CFF]/25 transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#232C3D] py-1.5 text-xs font-medium text-[#E6EAF2] hover:bg-[#2A354A] transition-all cursor-pointer"
             >
               <span>1-Click Sign In as Demo Operator</span>
               <ArrowRight size={13} />

@@ -105,10 +105,10 @@ def run_smoke_tests(base_url: str):
             if c.name == "csrftoken":
                 csrf_token = c.value
 
-        # Login as Demo Operator
+        # Login as Admin (Admin / Admin@123)
         login_payload = {
-            "username": "demo.operator",
-            "password": "DemoOperator2026!#Secure"
+            "username": "Admin",
+            "password": "Admin@123"
         }
         headers = {
             "X-CSRFToken": csrf_token,
@@ -126,10 +126,10 @@ def run_smoke_tests(base_url: str):
             if c.name == "csrftoken":
                 csrf_token = c.value
 
-        results.append(("3. Operator Auth (demo.operator)", True, f"HTTP {resp_login.status} (Role: {user.get('role')})", f"{ms:.1f}ms"))
+        results.append(("3. Operator Auth (Admin / Admin@123)", True, f"HTTP {resp_login.status} (Role: {user.get('role')})", f"{ms:.1f}ms"))
     except Exception as exc:
         print(f"  [!] FAILED: {exc}")
-        results.append(("3. Operator Auth (demo.operator)", False, str(exc), "-"))
+        results.append(("3. Operator Auth (Admin / Admin@123)", False, str(exc), "-"))
 
     # -------------------------------------------------------------
     # 4. Live Ingestion Simulator Dispatch
@@ -209,4 +209,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     success = run_smoke_tests(args.url)
     sys.exit(0 if success else 1)
-
