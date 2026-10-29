@@ -13,7 +13,7 @@ PURPOSE:
 import logging
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import status, serializers
 from rest_framework.response import Response
@@ -46,7 +46,9 @@ class UserRoleUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=UserRole.choices)
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class AuthLoginAPIView(APIView):
+    authentication_classes = []
     """
     Authenticates operator username & password, starting an HTTP session.
     """
