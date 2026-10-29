@@ -116,3 +116,7 @@ playwright-report/
 e2e/playwright-report/
 terraform/.terraform/
 
+
+# Large raw recordings exceeding GitHub 100MB push limit
+docs/assets/demo/original-raw-recording.mp4
+*.mp4.bak
