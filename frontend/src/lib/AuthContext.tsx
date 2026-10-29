@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient, subscribeToAuthChanges, broadcastAuthChange } from "./api";
+import { apiClient, subscribeToAuthChanges } from "./api";
 import type { User } from "./auth";
 
 interface AuthContextType {
@@ -78,8 +78,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [saveUser]);
 
   useEffect(() => {
-    // Reconcile background session with server
-    refreshAuth();
+    let active = true;
+
+    // Asynchronously reconcile background session with server
+    apiClient.auth
+      .me()
+      .then((res) => {
+        if (active) {
+          if (res && res.authenticated && res.user) {
+            saveUser(res.user);
+          } else {
+            saveUser(null);
+          }
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          saveUser(null);
+          setLoading(false);
+        }
+      });
 
     // Listen to local and cross-tab auth state events
     const unsubscribe = subscribeToAuthChanges((type, payload) => {
@@ -100,12 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return () => {
+      active = false;
       unsubscribe();
       if (typeof window !== "undefined") {
         window.removeEventListener("sb_trigger_login_modal", handleTriggerModal);
       }
     };
-  }, [refreshAuth, saveUser]);
+  }, [saveUser]);
 
   const login = async (username: string, passkey: string): Promise<User> => {
     const res = await apiClient.auth.login(username, passkey);
