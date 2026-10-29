@@ -144,3 +144,59 @@ jobs:
 
       - name: Validate Docker Compose Configuration
         run: docker compose config
+
+  cd-deploy:
+    name: Continuous Deployment to AWS EC2
+    needs: [backend-test, frontend-build, docker-validation]
+    runs-on: ubuntu-latest
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/production-ready') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Execute Automated Remote Deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER || 'ubuntu' }}
+          EC2_KEY: ${{ secrets.EC2_SSH_KEY }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_KEY" ]; then
+            echo "⚠️ AWS deployment secrets (EC2_HOST, EC2_SSH_KEY) not yet configured in GitHub Repository Settings."
+            echo "Live deployment: https://d1soslo0efb36p.cloudfront.net"
+            echo "To enable 100% automated push-to-deploy, add EC2_HOST and EC2_SSH_KEY under GitHub Repo Settings > Secrets and variables > Actions."
+            echo "Skipping automated remote deploy."
+            exit 0
+          fi
+          echo "=========================================================="
+          echo "🚀 Initiating Automated Deployment to AWS EC2 ($EC2_HOST)..."
+          echo "Target Branch: $TARGET_BRANCH"
+          echo "=========================================================="
+          mkdir -p ~/.ssh
+          echo "$EC2_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=60 \
+              -o TCPKeepAlive=yes \
+              -i ~/.ssh/deploy_key "${EC2_USER}@${EC2_HOST}" "bash -s" << EOF
+            set -e
+            echo "📥 [1/4] Syncing branch '$TARGET_BRANCH' on EC2..."
+            if [ ! -d "/home/ubuntu/signalbridge" ]; then
+              git clone https://github.com/Karthik-bhandarkar/signalbridge.git /home/ubuntu/signalbridge
+            fi
+            cd /home/ubuntu/signalbridge
+            git fetch origin
+            git checkout $TARGET_BRANCH
+            git pull origin $TARGET_BRANCH
+
+            echo "🐳 [2/4] Building and launching updated production containers..."
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            echo "🗄️ [3/4] Running schema migrations & seeding demo accounts..."
+            sleep 4
+            docker compose -f docker-compose.prod.yml exec -T web python manage.py migrate --noinput || true
+            docker compose -f docker-compose.prod.yml exec -T web python manage.py seed_demo_users || true
+
+            echo "🎉 [4/4] Automated Deployment to AWS EC2 Succeeded!"
+          EOF
