@@ -173,6 +173,60 @@ export default function LoginForm() {
           Evaluate full triage capabilities with seeded demo accounts. No setup required.
         </p>
 
+        {/* System Admin */}
+        <div className="rounded-xl border border-[#388BFD]/40 bg-[#111722] p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#E6EAF2]">
+              {DEMO_CREDENTIALS.admin.name}
+            </span>
+            <span className="font-mono text-[9px] font-semibold text-[#58A6FF] uppercase bg-[#388BFD]/15 border border-[#388BFD]/40 px-1.5 py-0.5 rounded">
+              Full Admin Privileges
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+            {/* Username */}
+            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
+              <span className="text-[#8B949E] truncate">{DEMO_CREDENTIALS.admin.username}</span>
+              <button
+                type="button"
+                onClick={() => handleCopy(DEMO_CREDENTIALS.admin.username, "adm_u")}
+                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
+                title="Copy username"
+              >
+                {copiedKey === "adm_u" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
+              </button>
+            </div>
+
+            {/* Password */}
+            <div className="flex items-center justify-between rounded-lg bg-[#0A0E14] px-2 py-1 border border-[#232C3D]">
+              <span className="text-[#8B949E] truncate">••••••••••••</span>
+              <button
+                type="button"
+                onClick={() => handleCopy(DEMO_CREDENTIALS.admin.password, "adm_p")}
+                className="text-[#8B949E] hover:text-[#E6EAF2] p-0.5"
+                title="Copy password"
+              >
+                {copiedKey === "adm_p" ? <Check size={11} className="text-[#3FB950]" /> : <Copy size={11} />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              setUsername(DEMO_CREDENTIALS.admin.username);
+              setPassword(DEMO_CREDENTIALS.admin.password);
+              handleLogin(DEMO_CREDENTIALS.admin.username, DEMO_CREDENTIALS.admin.password);
+            }}
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-[#388BFD]/50 bg-[#388BFD]/20 py-1.5 text-xs font-semibold text-[#58A6FF] hover:bg-[#388BFD]/30 transition-all"
+          >
+            <span>Fill & Sign In as Admin</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
         {/* Demo Operator */}
         <div className="rounded-xl border border-[#232C3D] bg-[#111722] p-3 space-y-2">
           <div className="flex items-center justify-between">

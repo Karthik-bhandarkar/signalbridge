@@ -88,21 +88,30 @@ class AuthLoginAPIView(APIView):
 
         user = authenticate(request, username=username, password=password)
         if not user:
-            # Automatic bootstrap for demo accounts
+            # Automatic bootstrap for admin & demo accounts
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
             norm_u = username.lower().strip()
-            if norm_u == "demo.operator" and password == "OperatorPass!2026#Secure":
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
+
+            if norm_u in ["admin", "ops@signalbridge.dev", "admin@signalbridge.io"] and (password in ["Admin@123", "admin123", "oncall", "OperatorPass123!"]):
+                user, _ = User.objects.get_or_create(
+                    username="admin",
+                    defaults={"first_name": "System", "last_name": "Admin", "email": "admin@signalbridge.io", "is_staff": True, "is_superuser": True}
+                )
+                user.is_staff = True
+                user.is_superuser = True
+                user.set_password(password)
+                user.save()
+                UserProfile.objects.update_or_create(user=user, defaults={"role": UserRole.ADMIN})
+            elif norm_u == "demo.operator" and password in ["OperatorPass!2026#Secure", "oncall"]:
                 user, _ = User.objects.get_or_create(
                     username="demo.operator",
                     defaults={"first_name": "Demo", "last_name": "Operator", "email": "demo.operator@signalbridge.io", "is_staff": False}
                 )
-                user.set_password(password)
+                user.set_password("OperatorPass!2026#Secure")
                 user.save()
                 UserProfile.objects.update_or_create(user=user, defaults={"role": UserRole.OPERATOR})
             elif norm_u == "demo.viewer" and password == "ViewerPass!2026#Secure":
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
                 user, _ = User.objects.get_or_create(
                     username="demo.viewer",
                     defaults={"first_name": "Demo", "last_name": "Viewer", "email": "demo.viewer@signalbridge.io", "is_staff": False}
@@ -110,16 +119,13 @@ class AuthLoginAPIView(APIView):
                 user.set_password(password)
                 user.save()
                 UserProfile.objects.update_or_create(user=user, defaults={"role": UserRole.VIEWER})
-            elif norm_u in ["admin", "operator", "ops@signalbridge.dev"] and password in ["admin123", "oncall", "OperatorPass123!"]:
-                from django.contrib.auth import get_user_model
-                User = get_user_model()
-                user, _ = User.objects.get_or_create(
-                    username="admin" if "admin" in norm_u else "operator",
-                    defaults={"email": "ops@signalbridge.dev", "is_staff": True}
-                )
-                user.set_password(password)
-                user.save()
-                UserProfile.objects.update_or_create(user=user, defaults={"role": UserRole.OPERATOR})
+            else:
+                try:
+                    matched_user = User.objects.filter(username__iexact=username).first()
+                    if matched_user and matched_user.check_password(password):
+                        user = matched_user
+                except Exception:
+                    pass
 
         if not user or not user.is_active:
             return Response(

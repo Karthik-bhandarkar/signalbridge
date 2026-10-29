@@ -79,7 +79,19 @@ export { DEMO_CREDENTIALS };
 export async function authenticate(identifier: string, password: string): Promise<SessionUser | null> {
   const norm = identifier.toLowerCase().trim();
 
-  // 1. Check Demo Operator credentials
+  // 1. Check Admin credentials (Admin / Admin@123)
+  if (
+    (norm === "admin" || norm === "admin@signalbridge.io") &&
+    (password === "Admin@123" || password === "admin123" || password === "Admin123!")
+  ) {
+    return {
+      email: "admin@signalbridge.io",
+      name: "Admin",
+      role: "admin",
+    };
+  }
+
+  // 2. Check Demo Operator credentials
   if (
     (norm === "demo.operator" || norm === "demo.operator@signalbridge.io" || norm === "ops@signalbridge.dev") &&
     (password === DEMO_CREDENTIALS.operator.password || password === "oncall" || password === "OperatorPass123!")

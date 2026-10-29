@@ -14,6 +14,16 @@ from apps.core.models import UserProfile, UserRole
 
 DEMO_ACCOUNTS = [
     {
+        "username": "admin",
+        "first_name": "System",
+        "last_name": "Admin",
+        "email": "admin@signalbridge.io",
+        "password": "Admin@123",
+        "role": UserRole.ADMIN,
+        "is_staff": True,
+        "is_superuser": True,
+    },
+    {
         "username": "demo.operator",
         "first_name": "Demo",
         "last_name": "Operator",

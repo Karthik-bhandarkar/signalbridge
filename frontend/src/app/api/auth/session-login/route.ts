@@ -3,9 +3,19 @@ import { authenticate, startSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const identifier = String(formData.get("username") ?? formData.get("email") ?? "").trim();
-    const password = String(formData.get("password") ?? "");
+    let identifier = "";
+    let password = "";
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const body = await request.json();
+      identifier = String(body.username ?? body.email ?? "").trim();
+      password = String(body.password ?? "");
+    } else {
+      const formData = await request.formData();
+      identifier = String(formData.get("username") ?? formData.get("email") ?? "").trim();
+      password = String(formData.get("password") ?? "");
+    }
 
     const user = await authenticate(identifier, password);
     if (!user) {
