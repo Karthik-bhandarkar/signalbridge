@@ -107,7 +107,7 @@ export default function Shell({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`ops-nav-item ${current ? "is-active" : ""}`}
+                className={`ops-nav-link ${current ? "active" : ""}`}
                 aria-current={current ? "page" : undefined}
                 onClick={() => setMenu(false)}
               >
@@ -123,13 +123,13 @@ export default function Shell({
           })}
 
           <span className="ops-nav-label">Public</span>
-          <Link href="/docs#status" className="ops-nav-item" onClick={() => setMenu(false)}>
+          <Link href="/docs#status" className="ops-nav-link" onClick={() => setMenu(false)}>
             <ArrowUpRight size={14} />
             <span>Public Status Page</span>
           </Link>
 
           <span className="ops-nav-label">Resources</span>
-          <Link href="/docs" className="ops-nav-item" onClick={() => setMenu(false)}>
+          <Link href="/docs" className="ops-nav-link" onClick={() => setMenu(false)}>
             <ArrowUpRight size={14} />
             <span>API Documentation</span>
           </Link>
@@ -209,10 +209,10 @@ export default function Shell({
           </button>
 
           <div className="ops-breadcrumb flex items-center gap-2">
-            <span className="ops-crumb-muted">Mission Control</span>
+            <span className="ops-crumb-muted">Production Gateway</span>
             <ChevronRight className="ops-crumb-muted" size={10} />
-            <span>Production</span>
-            <ChevronRight size={10} />
+
+
             <strong>{active.label}</strong>
             {isDemo && (
               <span className="ml-2 rounded-full border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-2 py-0.5 font-mono text-[9px] font-bold text-[#58A6FF] uppercase">

@@ -22,7 +22,12 @@
 .ops-workspace-icon { background: var(--surface-elevated); border-color: var(--border-default); color: var(--brand-link); }
 .ops-workspace-select strong, .ops-user strong { color: var(--text-primary); }
 .ops-workspace-select small, .ops-user small, .ops-sidebar-status p { color: var(--text-muted); }
-.ops-nav-label { color: var(--text-muted); }
+.ops-nav-label { display: block; margin: 18px 12px 6px; color: var(--text-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+.ops-nav-label:first-child { margin-top: 6px; }
+.ops-nav-item { color: var(--text-secondary); }
+.ops-nav-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+.ops-nav-item.is-active, .ops-nav-item.active { color: var(--text-primary); background: var(--surface-selected); border-color: var(--border-default); }
+.ops-nav-item.is-active::before, .ops-nav-item.active::before { background: var(--brand-violet); }
 .ops-nav-link { color: var(--text-secondary); }
 .ops-nav-link:hover { background: var(--surface-hover); color: var(--text-primary); }
 .ops-nav-link.active { color: var(--text-primary); background: var(--surface-selected); border-color: var(--border-default); }
@@ -153,8 +158,9 @@
 /* Keep long-form technical examples legible and horizontally scrollable on phones. */
 .sb-docs-page .sb-docs-content .sb-codeblock pre { font-size: 11px; line-height: 1.8; overflow-x: auto; }
 .ops-search-toggle { display: none; }
-@media (max-width: 650px) {
+@media (max-width: 860px) {
   .ops-search-toggle { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 7px; border: 1px solid var(--border-default); background: var(--surface-elevated); color: var(--text-primary); }
+  .ops-search:not(.is-open) { display: none; }
   .ops-search.is-open { display: flex; position: absolute; top: calc(100% + 8px); left: 16px; width: calc(100% - 32px); margin: 0; padding: 10px 12px; box-shadow: var(--sh-md); z-index: 30; }
   .ops-search.is-open input { font-size: 13px; }
 }

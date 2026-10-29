@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Nav from "@/components/marketing/Nav";
 import Hero from "@/components/marketing/Hero";
 import Statement from "@/components/marketing/Statement";
+import ArchitectureDiagram from "@/components/marketing/ArchitectureDiagram";
 import FeatureHex from "@/components/marketing/FeatureHex";
 import PipelineDemo from "@/components/marketing/PipelineDemo";
 import Bento from "@/components/marketing/Bento";
@@ -49,6 +50,7 @@ export default async function LandingPage() {
       <main id="main" className="lp-main">
         <Hero avgLatencyMs={metrics.avgLatencyMs} />
         <Statement />
+        <ArchitectureDiagram />
         <FeatureHex />
         <PipelineDemo />
         <Bento />

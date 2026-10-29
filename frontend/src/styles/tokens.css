@@ -1723,7 +1723,7 @@ body { background: #35275f; }
 /* ── nav ── */
 .lp-nav { background: rgba(46, 34, 90, 0.72); backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%); border-bottom: 1px solid rgba(190, 165, 255, 0.18); }
 .lp-nav::before { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, #7c5cf0, #d77be8 50%, #7c5cf0); opacity: 0.9; }
-.lp-nav.is-scrolled { background: rgba(40, 29, 80, 0.88); box-shadow: 0 14px 30px -22px rgba(9, 3, 30, 0.9); }
+.lp-nav.is-scrolled { background: rgba(22, 14, 48, 0.96); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); box-shadow: 0 14px 30px -22px rgba(9, 3, 30, 0.95); }
 .lp-nav-inner, .lp-nav.is-scrolled .lp-nav-inner { height: var(--nav-h); }
 .lp-nav.is-scrolled .lp-nav-inner { height: 60px; }
 .lp-logo { font-family: var(--f-display); font-weight: 700; font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: #e9d9ff; }
