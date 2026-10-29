@@ -116,14 +116,14 @@ services:
   # Asynchronously groups alerts, calculates hashes, and executes row-level locks.
   # ---------------------------------------------------------------------------
   celery_worker:
-    image:
+    image: signalbridge_backend:prod
+    container_name: signalbridge_celery_worker_prod
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
-        max-file: "5" signalbridge_backend:prod
-    container_name: signalbridge_celery_worker_prod
-    restart: unless-stopped
+        max-file: "5"
     command: celery -A config.celery worker -l info --concurrency=${CELERY_CONCURRENCY:-2} -Ofair
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
@@ -153,14 +153,14 @@ services:
   # Dispatches periodic active monitoring checks and metrics rollup sweeps.
   # ---------------------------------------------------------------------------
   celery_beat:
-    image:
+    image: signalbridge_backend:prod
+    container_name: signalbridge_celery_beat_prod
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
-        max-file: "5" signalbridge_backend:prod
-    container_name: signalbridge_celery_beat_prod
-    restart: unless-stopped
+        max-file: "5"
     command: celery -A config.celery beat -l info
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.production
@@ -191,14 +191,14 @@ services:
   # ===========================================================================
 
   postgres:
-    image: postgres
+    image: postgres:16-alpine
+    container_name: signalbridge_postgres_prod
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
-        max-file: "5":16-alpine
-    container_name: signalbridge_postgres_prod
-    restart: unless-stopped
+        max-file: "5"
     profiles: ["local-staging"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-signalbridge_db}
@@ -216,14 +216,14 @@ services:
       - signalbridge_prod_network
 
   redis:
-    image: redis
+    image: redis:7-alpine
+    container_name: signalbridge_redis_prod
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
-        max-file: "5":7-alpine
-    container_name: signalbridge_redis_prod
-    restart: unless-stopped
+        max-file: "5"
     profiles: ["local-staging"]
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     volumes:
