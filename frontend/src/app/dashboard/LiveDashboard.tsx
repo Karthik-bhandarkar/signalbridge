@@ -539,14 +539,7 @@ export default function LiveDashboard() {
         onRequestAuth={openLoginModal}
       />
 
-      {/* Operator Login Modal */}
-      <OperatorLoginModal
-        isOpen={localModalOpen}
-        onClose={() => setLocalModalOpen(false)}
-        onSuccess={() => {
-          refreshAll();
-        }}
-      />
+
     </div>
   );
 }

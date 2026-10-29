@@ -1,291 +1,291 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import {
-  Activity,
-  ArrowUpRight,
-  ChevronRight,
-  CircleDot,
-  Command,
-  LayoutGrid,
-  LogOut,
-  Menu,
-  Radio,
-  RefreshCw,
-  Search,
-  X,
-} from "lucide-react";
-
-import Brand from "@/components/ui/Brand";
-import OperatorLoginModal from "@/components/ops/OperatorLoginModal";
-import { useAuth } from "@/lib/AuthContext";
-
-const nav = [
-  { href: "/dashboard", label: "Overview", icon: LayoutGrid },
-  { href: "/dashboard/incidents", label: "Incidents", icon: CircleDot },
-  { href: "/dashboard/events", label: "Alerts (Ingestion Log)", icon: Radio },
-  { href: "/dashboard/system", label: "System Health", icon: Activity },
-];
-
-export default function Shell({
-  children,
-  openIncidents = 0,
-  critical = 0,
-}: {
-  children: ReactNode;
-  user?: { name: string; email: string; role: string } | null;
-  openIncidents?: number;
-  critical?: number;
-}) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user, isOperator, authModalOpen, setAuthModalOpen, openLoginModal, logout } = useAuth();
-  const [menu, setMenu] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const search = useRef<HTMLInputElement>(null);
-
-  const active =
-    [...nav].reverse().find(
-      (item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
-    ) ?? nav[0];
-
-  const isDemo = Boolean(
-    user?.is_demo_user ||
-      user?.email?.toLowerCase().includes("demo") ||
-      user?.username?.toLowerCase().includes("demo") ||
-      user?.role?.toLowerCase().includes("demo")
-  );
-
-  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "OP";
-
-  useEffect(() => {
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenu(false);
-        setSearchOpen(false);
-        search.current?.blur();
-      }
-      if (event.key === "/" && !["INPUT", "TEXTAREA"].includes((event.target as HTMLElement).tagName)) {
-        event.preventDefault();
-        setSearchOpen(true);
-        window.requestAnimationFrame(() => search.current?.focus());
-      }
-    };
-    window.addEventListener("keydown", keydown);
-    return () => window.removeEventListener("keydown", keydown);
-  }, []);
-
-  return (
-    <div className="ops-app">
-      {/* Left Sidebar */}
-      <aside className={`ops-sidebar ${menu ? "is-open" : ""}`}>
-        <div className="ops-sidebar-top">
-          <Link href="/dashboard" aria-label="SignalBridge overview">
-            <Brand />
-          </Link>
-        </div>
-
-        <div className="ops-workspace-select">
-          <span className="ops-workspace-icon">
-            <Command size={16} />
-          </span>
-          <div>
-            <strong>Production Gateway</strong>
-            <small>AWS EC2 · us-east-1</small>
-          </div>
-        </div>
-
-        <nav className="ops-nav" aria-label="Workspace navigation">
-          <span className="ops-nav-label">Workspace</span>
-          {nav.map((item) => {
-            const Icon = item.icon;
-            const current = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`ops-nav-item ${current ? "is-active" : ""}`}
-                aria-current={current ? "page" : undefined}
-                onClick={() => setMenu(false)}
-              >
-                <Icon size={14} />
-                <span>{item.label}</span>
-                {item.href === "/dashboard/incidents" && openIncidents > 0 ? (
-                  <span className={`ops-nav-count ${critical > 0 ? "is-critical" : ""}`}>
-                    {openIncidents}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-
-          <span className="ops-nav-label">Public</span>
-          <Link href="/docs#status" className="ops-nav-item" onClick={() => setMenu(false)}>
-            <ArrowUpRight size={14} />
-            <span>Public Status Page</span>
-          </Link>
-
-          <span className="ops-nav-label">Resources</span>
-          <Link href="/docs" className="ops-nav-item" onClick={() => setMenu(false)}>
-            <ArrowUpRight size={14} />
-            <span>API Documentation</span>
-          </Link>
-        </nav>
-
-        <div className="ops-sidebar-footer">
-          <span>
-            <i className="sb-status-dot" />
-            Live Ingestion Engine
-          </span>
-          <p>
-            HMAC-SHA256 · PostgreSQL
-            <br />
-            Redis correlation · S3 cold tier
-          </p>
-        </div>
-
-        {user ? (
-          <div className="ops-user">
-            <span className="ops-avatar">{initials}</span>
-            <div className="min-w-0 flex-1">
-              <strong className="truncate">{user.username}</strong>
-              <small className="capitalize truncate">{user.role}</small>
-            </div>
-            <button
-              className="ops-signout"
-              type="button"
-              aria-label="Sign out"
-              title="Sign out"
-              onClick={() => logout()}
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        ) : (
-          <div className="ops-user">
-            <span className="ops-avatar" style={{ background: "rgba(79, 140, 255, 0.2)", color: "#58A6FF" }}>
-              👁️
-            </span>
-            <div className="min-w-0 flex-1">
-              <strong>Public Observer</strong>
-              <small>Read-only access</small>
-            </div>
-            <button
-              type="button"
-              onClick={openLoginModal}
-              className="ops-signout"
-              title="Sign in as Operator"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#58A6FF" }}
-            >
-              <ArrowUpRight size={14} />
-            </button>
-          </div>
-        )}
-      </aside>
-
-      {/* Main Container */}
-      <div className="ops-shell-main flex flex-col min-h-screen">
-        {/* Demo Mode Banner */}
-        {isDemo && (
-          <div className="bg-[#4F8CFF]/15 border-b border-[#4F8CFF]/30 px-4 py-2 text-center text-xs text-[#58A6FF] flex items-center justify-center gap-2 font-mono">
-            <span className="h-2 w-2 rounded-full bg-[#4F8CFF] animate-ping" />
-            <span className="font-semibold">You are in Demo Mode. Data resets nightly.</span>
-          </div>
-        )}
-
-        {/* Topbar */}
-        <header className="ops-topbar">
-          <button
-            type="button"
-            className="ops-icon-menu"
-            onClick={() => setMenu(!menu)}
-            aria-label={menu ? "Close navigation" : "Open navigation"}
-            aria-expanded={menu}
-          >
-            {menu ? <X size={15} /> : <Menu size={15} />}
-          </button>
-
-          <div className="ops-breadcrumb flex items-center gap-2">
-            <span className="ops-crumb-muted">Mission Control</span>
-            <ChevronRight className="ops-crumb-muted" size={10} />
-            <span>Production</span>
-            <ChevronRight size={10} />
-            <strong>{active.label}</strong>
-            {isDemo && (
-              <span className="ml-2 rounded-full border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-2 py-0.5 font-mono text-[9px] font-bold text-[#58A6FF] uppercase">
-                DEMO MODE
-              </span>
-            )}
-          </div>
-
-          <form
-            id="ops-search-form"
-            method="GET"
-            action="/dashboard/incidents"
-            className={`ops-search ${searchOpen ? "is-open" : ""}`}
-            role="search"
-          >
-            <Search size={12} />
-            <input
-              ref={search}
-              name="q"
-              type="search"
-              placeholder="Find an incident…"
-              aria-label="Search incidents by reference, service or title"
-            />
-            <kbd>/</kbd>
-          </form>
-
-          <div className="ops-topbar-actions">
-            {!user ? (
-              <button
-                type="button"
-                onClick={openLoginModal}
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-2.5 py-1 text-[11px] font-semibold text-[#58A6FF] hover:bg-[#4F8CFF]/25 hover:text-white transition-colors"
-              >
-                Sign In as Operator
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              className="ops-search-toggle"
-              aria-label={searchOpen ? "Close search" : "Search incidents"}
-              aria-controls="ops-search-form"
-              aria-expanded={searchOpen}
-              onClick={() => {
-                const next = !searchOpen;
-                setSearchOpen(next);
-                if (next) window.requestAnimationFrame(() => search.current?.focus());
-              }}
-            >
-              {searchOpen ? <X size={15} /> : <Search size={15} />}
-            </button>
-
-            <button
-              type="button"
-              className="ops-refresh"
-              title="Refresh workspace data"
-              aria-label="Refresh workspace data"
-              disabled={pending}
-              onClick={() => startTransition(() => router.refresh())}
-            >
-              <RefreshCw size={13} className={pending ? "sb-spinning" : ""} />
-            </button>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="ops-page-content flex-1">{children}</main>
-      </div>
-
-      {menu && <button className="ops-mobile-backdrop" onClick={() => setMenu(false)} aria-label="Close navigation" />}
-
-      {/* Global Operator Login Modal */}
-      <OperatorLoginModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
-    </div>
-  );
-}
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  Activity,
+  ArrowUpRight,
+  ChevronRight,
+  CircleDot,
+  Command,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Radio,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
+
+import Brand from "@/components/ui/Brand";
+import OperatorLoginModal from "@/components/ops/OperatorLoginModal";
+import { useAuth } from "@/lib/AuthContext";
+
+const nav = [
+  { href: "/dashboard", label: "Overview", icon: LayoutGrid },
+  { href: "/dashboard/incidents", label: "Incidents", icon: CircleDot },
+  { href: "/dashboard/events", label: "Alerts (Ingestion Log)", icon: Radio },
+  { href: "/dashboard/system", label: "System Health", icon: Activity },
+];
+
+export default function Shell({
+  children,
+  openIncidents = 0,
+  critical = 0,
+}: {
+  children: ReactNode;
+  user?: { name: string; email: string; role: string } | null;
+  openIncidents?: number;
+  critical?: number;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, isOperator, authModalOpen, setAuthModalOpen, openLoginModal, logout, refreshAuth } = useAuth();
+  const [menu, setMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const search = useRef<HTMLInputElement>(null);
+
+  const active =
+    [...nav].reverse().find(
+      (item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
+    ) ?? nav[0];
+
+  const isDemo = Boolean(
+    user?.is_demo_user ||
+      user?.email?.toLowerCase().includes("demo") ||
+      user?.username?.toLowerCase().includes("demo") ||
+      user?.role?.toLowerCase().includes("demo")
+  );
+
+  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "OP";
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenu(false);
+        setSearchOpen(false);
+        search.current?.blur();
+      }
+      if (event.key === "/" && !["INPUT", "TEXTAREA"].includes((event.target as HTMLElement).tagName)) {
+        event.preventDefault();
+        setSearchOpen(true);
+        window.requestAnimationFrame(() => search.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, []);
+
+  return (
+    <div className="ops-app">
+      {/* Left Sidebar */}
+      <aside className={`ops-sidebar ${menu ? "is-open" : ""}`}>
+        <div className="ops-sidebar-top">
+          <Link href="/dashboard" aria-label="SignalBridge overview">
+            <Brand />
+          </Link>
+        </div>
+
+        <div className="ops-workspace-select">
+          <span className="ops-workspace-icon">
+            <Command size={16} />
+          </span>
+          <div>
+            <strong>Production Gateway</strong>
+            <small>AWS EC2 · us-east-1</small>
+          </div>
+        </div>
+
+        <nav className="ops-nav" aria-label="Workspace navigation">
+          <span className="ops-nav-label">Workspace</span>
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const current = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`ops-nav-item ${current ? "is-active" : ""}`}
+                aria-current={current ? "page" : undefined}
+                onClick={() => setMenu(false)}
+              >
+                <Icon size={14} />
+                <span>{item.label}</span>
+                {item.href === "/dashboard/incidents" && openIncidents > 0 ? (
+                  <span className={`ops-nav-count ${critical > 0 ? "is-critical" : ""}`}>
+                    {openIncidents}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+
+          <span className="ops-nav-label">Public</span>
+          <Link href="/docs#status" className="ops-nav-item" onClick={() => setMenu(false)}>
+            <ArrowUpRight size={14} />
+            <span>Public Status Page</span>
+          </Link>
+
+          <span className="ops-nav-label">Resources</span>
+          <Link href="/docs" className="ops-nav-item" onClick={() => setMenu(false)}>
+            <ArrowUpRight size={14} />
+            <span>API Documentation</span>
+          </Link>
+        </nav>
+
+        <div className="ops-sidebar-footer">
+          <span>
+            <i className="sb-status-dot" />
+            Live Ingestion Engine
+          </span>
+          <p>
+            HMAC-SHA256 · PostgreSQL
+            <br />
+            Redis correlation · S3 cold tier
+          </p>
+        </div>
+
+        {user ? (
+          <div className="ops-user">
+            <span className="ops-avatar">{initials}</span>
+            <div className="min-w-0 flex-1">
+              <strong className="truncate">{user.username}</strong>
+              <small className="capitalize truncate">{user.role}</small>
+            </div>
+            <button
+              className="ops-signout"
+              type="button"
+              aria-label="Sign out"
+              title="Sign out"
+              onClick={() => logout()}
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        ) : (
+          <div className="ops-user">
+            <span className="ops-avatar" style={{ background: "rgba(79, 140, 255, 0.2)", color: "#58A6FF" }}>
+              👁️
+            </span>
+            <div className="min-w-0 flex-1">
+              <strong>Public Observer</strong>
+              <small>Read-only access</small>
+            </div>
+            <button
+              type="button"
+              onClick={openLoginModal}
+              className="ops-signout"
+              title="Sign in as Operator"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#58A6FF" }}
+            >
+              <ArrowUpRight size={14} />
+            </button>
+          </div>
+        )}
+      </aside>
+
+      {/* Main Container */}
+      <div className="ops-shell-main flex flex-col min-h-screen">
+        {/* Demo Mode Banner */}
+        {isDemo && (
+          <div className="bg-[#4F8CFF]/15 border-b border-[#4F8CFF]/30 px-4 py-2 text-center text-xs text-[#58A6FF] flex items-center justify-center gap-2 font-mono">
+            <span className="h-2 w-2 rounded-full bg-[#4F8CFF] animate-ping" />
+            <span className="font-semibold">You are in Demo Mode. Data resets nightly.</span>
+          </div>
+        )}
+
+        {/* Topbar */}
+        <header className="ops-topbar">
+          <button
+            type="button"
+            className="ops-icon-menu"
+            onClick={() => setMenu(!menu)}
+            aria-label={menu ? "Close navigation" : "Open navigation"}
+            aria-expanded={menu}
+          >
+            {menu ? <X size={15} /> : <Menu size={15} />}
+          </button>
+
+          <div className="ops-breadcrumb flex items-center gap-2">
+            <span className="ops-crumb-muted">Mission Control</span>
+            <ChevronRight className="ops-crumb-muted" size={10} />
+            <span>Production</span>
+            <ChevronRight size={10} />
+            <strong>{active.label}</strong>
+            {isDemo && (
+              <span className="ml-2 rounded-full border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-2 py-0.5 font-mono text-[9px] font-bold text-[#58A6FF] uppercase">
+                DEMO MODE
+              </span>
+            )}
+          </div>
+
+          <form
+            id="ops-search-form"
+            method="GET"
+            action="/dashboard/incidents"
+            className={`ops-search ${searchOpen ? "is-open" : ""}`}
+            role="search"
+          >
+            <Search size={12} />
+            <input
+              ref={search}
+              name="q"
+              type="search"
+              placeholder="Find an incident…"
+              aria-label="Search incidents by reference, service or title"
+            />
+            <kbd>/</kbd>
+          </form>
+
+          <div className="ops-topbar-actions">
+            {!user ? (
+              <button
+                type="button"
+                onClick={openLoginModal}
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[#4F8CFF]/40 bg-[#4F8CFF]/15 px-2.5 py-1 text-[11px] font-semibold text-[#58A6FF] hover:bg-[#4F8CFF]/25 hover:text-white transition-colors"
+              >
+                Sign In as Operator
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              className="ops-search-toggle"
+              aria-label={searchOpen ? "Close search" : "Search incidents"}
+              aria-controls="ops-search-form"
+              aria-expanded={searchOpen}
+              onClick={() => {
+                const next = !searchOpen;
+                setSearchOpen(next);
+                if (next) window.requestAnimationFrame(() => search.current?.focus());
+              }}
+            >
+              {searchOpen ? <X size={15} /> : <Search size={15} />}
+            </button>
+
+            <button
+              type="button"
+              className="ops-refresh"
+              title="Refresh workspace data"
+              aria-label="Refresh workspace data"
+              disabled={pending}
+              onClick={() => startTransition(() => router.refresh())}
+            >
+              <RefreshCw size={13} className={pending ? "sb-spinning" : ""} />
+            </button>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="ops-page-content flex-1">{children}</main>
+      </div>
+
+      {menu && <button className="ops-mobile-backdrop" onClick={() => setMenu(false)} aria-label="Close navigation" />}
+
+      {/* Global Operator Login Modal */}
+      <OperatorLoginModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} onSuccess={() => refreshAuth()} />
+    </div>
+  );
+}

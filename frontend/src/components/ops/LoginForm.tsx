@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, User, Copy, Check, ArrowRight, ShieldCheck, AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 import { PUBLIC_DEMO_ACCOUNTS } from "@/lib/constants";
-import { apiClient, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
+import { ApiError } from "@/lib/api";
 
 interface LoginFormProps {
   onSuccess?: (user: any) => void;
@@ -12,6 +13,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState("Admin");
   const [password, setPassword] = useState("Admin@123");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,9 +39,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     setError(null);
 
     try {
-      const loginRes = await apiClient.auth.login(finalUser, finalPass);
-      const user = loginRes.user;
-
+      const user = await login(finalUser, finalPass);
       if (onSuccess) {
         onSuccess(user);
       } else {
@@ -207,6 +207,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               type="button"
               disabled={loading}
               onClick={() => handleQuickFillAndSignIn(PUBLIC_DEMO_ACCOUNTS.admin)}
+              aria-label="1-Click Sign In as Admin"
               className="shrink-0 flex items-center gap-1 rounded-lg bg-[#4F8CFF] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#4F8CFF]/90 transition-all cursor-pointer"
             >
               <span>Login</span>
@@ -246,6 +247,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
               type="button"
               disabled={loading}
               onClick={() => handleQuickFillAndSignIn(PUBLIC_DEMO_ACCOUNTS.viewer)}
+              aria-label="1-Click Sign In as Demo Viewer"
               className="shrink-0 flex items-center gap-1 rounded-lg bg-[#232C3D] px-2.5 py-1.5 text-[11px] font-semibold text-[#E6EAF2] hover:bg-[#2A354A] transition-all cursor-pointer"
             >
               <span>Login</span>

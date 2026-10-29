@@ -137,13 +137,7 @@ export default function IncidentsClientPage() {
         onRequestAuth={openLoginModal}
       />
 
-      <OperatorLoginModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={() => {
-          fetchIncidents();
-        }}
-      />
+
     </div>
   );
 }

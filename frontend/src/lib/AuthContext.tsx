@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { apiClient, subscribeToAuthChanges, triggerLoginModal } from "./api";
+import { useRouter } from "next/navigation";
+import { apiClient, subscribeToAuthChanges, broadcastAuthChange } from "./api";
 import type { User } from "./auth";
 
 interface AuthContextType {
@@ -12,6 +13,7 @@ interface AuthContextType {
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
   openLoginModal: () => void;
+  closeLoginModal: () => void;
   login: (username: string, passkey: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<User | null>;
@@ -19,90 +21,109 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const STORAGE_KEY = "sb_active_user";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
+
+  // Instant hydration from localStorage if present (eliminates unauthenticated flicker)
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch {
+        // Ignore JSON error
+      }
+    }
+    return null;
+  });
+
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const saveUser = useCallback((u: User | null) => {
+    setUser(u);
+    if (typeof window !== "undefined") {
+      try {
+        if (u) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        // Ignore storage error
+      }
+    }
+  }, []);
 
   const refreshAuth = useCallback(async (): Promise<User | null> => {
     try {
       const res = await apiClient.auth.me();
       if (res && res.authenticated && res.user) {
-        setUser(res.user);
+        saveUser(res.user);
         return res.user;
       } else {
-        setUser(null);
+        saveUser(null);
         return null;
       }
     } catch {
-      setUser(null);
+      saveUser(null);
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [saveUser]);
 
   useEffect(() => {
-    let mounted = true;
-    apiClient.auth
-      .me()
-      .then((res) => {
-        if (mounted) {
-          if (res && res.authenticated && res.user) {
-            setUser(res.user);
-          } else {
-            setUser(null);
-          }
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setUser(null);
-          setLoading(false);
-        }
-      });
+    // Reconcile background session with server
+    refreshAuth();
 
-    // Listen to cross-tab auth state events
+    // Listen to local and cross-tab auth state events
     const unsubscribe = subscribeToAuthChanges((type, payload) => {
       if (type === "LOGIN" && payload) {
-        setUser(payload as User);
+        saveUser(payload as User);
         setAuthModalOpen(false);
       } else if (type === "LOGOUT") {
-        setUser(null);
+        saveUser(null);
       }
     });
 
-    // Listen to modal trigger from 401s in apiClient
     const handleTriggerModal = () => {
       setAuthModalOpen(true);
     };
+
     if (typeof window !== "undefined") {
       window.addEventListener("sb_trigger_login_modal", handleTriggerModal);
     }
 
     return () => {
-      mounted = false;
       unsubscribe();
       if (typeof window !== "undefined") {
         window.removeEventListener("sb_trigger_login_modal", handleTriggerModal);
       }
     };
-  }, [refreshAuth]);
+  }, [refreshAuth, saveUser]);
 
   const login = async (username: string, passkey: string): Promise<User> => {
     const res = await apiClient.auth.login(username, passkey);
-    setUser(res.user);
+    saveUser(res.user);
     setAuthModalOpen(false);
+    router.refresh();
     return res.user;
   };
 
   const logout = async (): Promise<void> => {
     await apiClient.auth.logout();
-    setUser(null);
+    saveUser(null);
+    setAuthModalOpen(false);
+    router.refresh();
   };
 
   const openLoginModal = () => setAuthModalOpen(true);
+  const closeLoginModal = () => setAuthModalOpen(false);
 
   const isAuthenticated = Boolean(user);
   const isOperator = Boolean(
@@ -119,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authModalOpen,
         setAuthModalOpen,
         openLoginModal,
+        closeLoginModal,
         login,
         logout,
         refreshAuth,
